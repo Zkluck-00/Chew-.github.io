@@ -1,18 +1,18 @@
-// MenuGo - autenticacion temporal del administrador
+// Chew - autenticacion temporal del administrador
 // Base frontend para pruebas. Cuando exista backend, reemplazar por autenticacion real.
 
 const ADMIN_KEYS = {
-  sesion: "menugo_admin_sesion",
+  sesion: "Chew_admin_sesion",
 };
 
 const ADMIN_DEFAULT = {
-  nombre: "Administrador MenuGo",
-  email: "Admin@MenuGo.com",
+  nombre: "Administrador Chew",
+  email: "Admin@Chew.com",
   password: "AdminGo123#",
   rol: "Administrador",
 };
 
-const API_BASE = window.MENUGO_API || "http://localhost:4000/api";
+const API_BASE = window.Chew_API || "http://localhost:4000/api";
 
 async function apiJson(url, options = {}) {
   const response = await fetch(`${API_BASE}${url}`, {

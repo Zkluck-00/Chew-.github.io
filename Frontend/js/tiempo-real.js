@@ -13,7 +13,7 @@ class RealTimeClient {
     if (this.eventSource && this.eventSource.readyState !== EventSource.CLOSED) return;
 
     this.isConnecting = true;
-    const baseUrl = window.MENUGO_API || "http://localhost:4000/api";
+    const baseUrl = window.Chew_API || "http://localhost:4000/api";
     
     try {
       this.eventSource = new EventSource(`${baseUrl}/events`);

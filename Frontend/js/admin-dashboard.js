@@ -269,7 +269,7 @@ function iniciarRefrescoDashboardAdmin() {
 }
 async function apiAdminDashboard(url, options = {}) {
   if (typeof apiJson === "function") return apiJson(url, options);
-  const base = window.MENUGO_API || "http://localhost:4000/api";
+  const base = window.Chew_API || "http://localhost:4000/api";
   const response = await fetch(`${base}${url}`, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,

@@ -1,4 +1,4 @@
-// MenuGo - datos de platos de la carta
+// Chew - datos de platos de la carta
 // Este archivo contiene datos compartidos para menú local y menú para llevar.
 
 const categorias = [
@@ -26,30 +26,30 @@ const normal = ["Preparación normal"];
 const LIMITE_OPCIONES_PRODUCTO = 2;
 const opcionesBebidaFria = ["Helada", "Sin helar", "Con hielo aparte"];
 
-const GRUPOS_OPCIONES_EXCLUYENTES_MENUGO = [
+const GRUPOS_OPCIONES_EXCLUYENTES_Chew = [
   ["Helada", "Sin helar"],
   ["Con ají", "Sin ají", "Poco picante"],
   ["Preparación normal", "Sin ají", "Poco picante"],
   ["Normal", "Sin azúcar"],
 ];
 
-function opcionesSonExcluyentesMenuGo(opcionA, opcionB) {
-  const claveA = normalizarTextoMenuGo(opcionA);
-  const claveB = normalizarTextoMenuGo(opcionB);
+function opcionesSonExcluyentesChew(opcionA, opcionB) {
+  const claveA = normalizarTextoChew(opcionA);
+  const claveB = normalizarTextoChew(opcionB);
   if (!claveA || !claveB || claveA === claveB) return false;
 
-  return GRUPOS_OPCIONES_EXCLUYENTES_MENUGO.some((grupo) => {
-    const clavesGrupo = grupo.map((opcion) => normalizarTextoMenuGo(opcion));
+  return GRUPOS_OPCIONES_EXCLUYENTES_Chew.some((grupo) => {
+    const clavesGrupo = grupo.map((opcion) => normalizarTextoChew(opcion));
     return clavesGrupo.includes(claveA) && clavesGrupo.includes(claveB);
   });
 }
 
-function validarOpcionesProductoMenuGo(name, checkbox, limite = LIMITE_OPCIONES_PRODUCTO) {
+function validarOpcionesProductoChew(name, checkbox, limite = LIMITE_OPCIONES_PRODUCTO) {
   const opciones = Array.from(document.getElementsByName(name));
 
   if (checkbox?.checked) {
     opciones.forEach((opcion) => {
-      if (opcion !== checkbox && opcion.checked && opcionesSonExcluyentesMenuGo(checkbox.value, opcion.value)) {
+      if (opcion !== checkbox && opcion.checked && opcionesSonExcluyentesChew(checkbox.value, opcion.value)) {
         opcion.checked = false;
       }
     });
@@ -166,7 +166,7 @@ const imagenesProductos = {
 };
 
 
-function normalizarTextoMenuGo(valor) {
+function normalizarTextoChew(valor) {
   return String(valor || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -174,20 +174,20 @@ function normalizarTextoMenuGo(valor) {
     .trim();
 }
 
-function deduplicarOpcionesMenuGo(opciones) {
+function deduplicarOpcionesChew(opciones) {
   const vistas = new Set();
   return (Array.isArray(opciones) ? opciones : [])
     .map((opcion) => String(opcion || "").trim())
     .filter(Boolean)
     .filter((opcion) => {
-      const clave = normalizarTextoMenuGo(opcion);
+      const clave = normalizarTextoChew(opcion);
       if (vistas.has(clave)) return false;
       vistas.add(clave);
       return true;
     });
 }
 
-function buscarProductoLocalMenuGo(producto) {
+function buscarProductoLocalChew(producto) {
   if (!Array.isArray(productosMenu)) return null;
 
   const posiblesIds = [
@@ -204,15 +204,15 @@ function buscarProductoLocalMenuGo(producto) {
   const porId = productosMenu.find((item) => posiblesIds.includes(String(item.id)));
   if (porId) return porId;
 
-  const nombre = normalizarTextoMenuGo(producto?.nombre);
+  const nombre = normalizarTextoChew(producto?.nombre);
   if (!nombre) return null;
 
-  return productosMenu.find((item) => normalizarTextoMenuGo(item.nombre) === nombre) || null;
+  return productosMenu.find((item) => normalizarTextoChew(item.nombre) === nombre) || null;
 }
 
-function opcionesInferidasMenuGo(producto) {
-  const categoria = normalizarTextoMenuGo(producto?.categoria || producto?.tipo_producto || producto?.tipo);
-  const nombre = normalizarTextoMenuGo(producto?.nombre);
+function opcionesInferidasChew(producto) {
+  const categoria = normalizarTextoChew(producto?.categoria || producto?.tipo_producto || producto?.tipo);
+  const nombre = normalizarTextoChew(producto?.nombre);
 
   if (categoria.includes("gaseosa") || /gaseosa|inka|coca|agua|san luis|botella/.test(nombre)) {
     return opcionesBebidaFria;
@@ -253,16 +253,16 @@ function opcionesInferidasMenuGo(producto) {
   return ["Preparación normal"];
 }
 
-function opcionesProductoMenuGo(producto) {
-  const propias = deduplicarOpcionesMenuGo(producto?.opciones);
-  const esSoloNormal = propias.length === 1 && normalizarTextoMenuGo(propias[0]) === "preparacion normal";
+function opcionesProductoChew(producto) {
+  const propias = deduplicarOpcionesChew(producto?.opciones);
+  const esSoloNormal = propias.length === 1 && normalizarTextoChew(propias[0]) === "preparacion normal";
   if (propias.length > 0 && !esSoloNormal) return propias;
 
-  const productoLocal = buscarProductoLocalMenuGo(producto);
-  const opcionesLocales = deduplicarOpcionesMenuGo(productoLocal?.opciones);
+  const productoLocal = buscarProductoLocalChew(producto);
+  const opcionesLocales = deduplicarOpcionesChew(productoLocal?.opciones);
   if (opcionesLocales.length > 0) return opcionesLocales;
 
-  return opcionesInferidasMenuGo(producto);
+  return opcionesInferidasChew(producto);
 }
 
 function p(

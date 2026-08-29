@@ -1,7 +1,7 @@
 let carrito = JSON.parse(localStorage.getItem("pedido")) || [];
 let categoriaActual = "todas";
 let busquedaActual = "";
-const API_BASE_MENU = window.MENUGO_API || "http://localhost:4000/api";
+const API_BASE_MENU = window.Chew_API || "http://localhost:4000/api";
 const MAX_PLATOS_PEDIDO = 7;
 let productosMenuBD = null;
 
@@ -53,9 +53,9 @@ function puedeAgregarPlato() {
 
 function productoDesdeBD(producto) {
   const id = producto.codigo_producto || String(producto.id_producto || producto.id);
-  const productoLocal = buscarProductoLocalMenuGo({ ...producto, id });
+  const productoLocal = buscarProductoLocalChew({ ...producto, id });
   const categoriaOriginal = producto.categoria || producto.tipo_producto || producto.tipo || "otros";
-  const categoria = productoLocal?.categoria && ["plato", "bebida", "otros"].includes(normalizarTextoMenuGo(categoriaOriginal))
+  const categoria = productoLocal?.categoria && ["plato", "bebida", "otros"].includes(normalizarTextoChew(categoriaOriginal))
     ? productoLocal.categoria
     : categoriaOriginal;
   const normalizado = {
@@ -76,7 +76,7 @@ return {
   ...normalizado,
   disponible_llevar: producto.disponible_llevar !== false,
   variantes: variantesLocal,
-  opciones: opcionesProductoMenuGo(normalizado),
+  opciones: opcionesProductoChew(normalizado),
 };
 }
 
@@ -264,7 +264,7 @@ function crearCardProducto(producto) {
       const inputId = `${producto.id}-op-${index}`;
       return `
       <label for="${inputId}" class="cursor-pointer">
-        <input class="peer sr-only" type="checkbox" name="opcion-${producto.id}" id="${inputId}" value="${opcion}" ${index === 0 ? "checked" : ""} onchange="validarOpcionesProductoMenuGo('opcion-${producto.id}', this, ${limiteOpciones})">
+        <input class="peer sr-only" type="checkbox" name="opcion-${producto.id}" id="${inputId}" value="${opcion}" ${index === 0 ? "checked" : ""} onchange="validarOpcionesProductoChew('opcion-${producto.id}', this, ${limiteOpciones})">
         <span class="inline-flex rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 transition peer-checked:border-orange-500 peer-checked:bg-orange-500 peer-checked:text-white hover:border-orange-500">
           ${opcion}
         </span>
@@ -338,7 +338,7 @@ function obtenerSelecciones(name) {
 }
 
 function validarLimiteOpcionesProducto(name, checkbox, limite = 2) {
-  return validarOpcionesProductoMenuGo(name, checkbox, limite);
+  return validarOpcionesProductoChew(name, checkbox, limite);
 }
 
 function agregarAlCarrito(idProducto) {

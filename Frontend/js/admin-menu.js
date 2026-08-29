@@ -1,9 +1,9 @@
-// MenuGo - gestion administrativa del menu
+// Chew - gestion administrativa del menu
 
 const ADMIN_MENU_KEYS = {
-  nuevos: "menugo_admin_productos_nuevos",
-  eliminados: "menugo_admin_productos_eliminados",
-  menuDia: "menugo_admin_menu_dia",
+  nuevos: "Chew_admin_productos_nuevos",
+  eliminados: "Chew_admin_productos_eliminados",
+  menuDia: "Chew_admin_menu_dia",
 };
 
 let sesionMenuAdminActual = null;

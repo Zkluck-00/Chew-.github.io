@@ -1,6 +1,6 @@
-// MenuGo - gestion administrativa de trabajadores
+// Chew - gestion administrativa de trabajadores
 
-const ADMIN_TRABAJADORES_KEY = "menugo_admin_trabajadores";
+const ADMIN_TRABAJADORES_KEY = "Chew_admin_trabajadores";
 let sesionTrabajadoresAdmin = null;
 let todosTrabajadoresAdmin = []; 
 function apiJson(url, options = {}) {

@@ -31,7 +31,7 @@ app.use(cors({
 app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, '../../Frontend')));
 app.get("/", (req, res) => {
-  res.json({ ok: true, message: "API MenuGo funcionando correctamente" });
+  res.json({ ok: true, message: "API Chew funcionando correctamente" });
 });
 
 app.get("/api/health", (req, res) => {

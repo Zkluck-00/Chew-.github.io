@@ -1,4 +1,4 @@
-// MenuGo - login temporal de administrador
+// Chew - login temporal de administrador
 
 function mostrarMensajeLogin(texto, tipo = "info") {
   const box = document.getElementById("mensaje-login");

@@ -1,24 +1,24 @@
-// MenuGo - autenticacion para Mesero y Cocina
+// Chew - autenticacion para Mesero y Cocina
 // Protege las pantallas internas del personal con credenciales por rol.
 
 const PERSONAL_AUTH_KEYS = {
-  mesero: 'menugo_mesero_sesion',
-  cocina: 'menugo_cocina_sesion'
+  mesero: 'Chew_mesero_sesion',
+  cocina: 'Chew_cocina_sesion'
 };
 
-const API_BASE_PERSONAL = window.MENUGO_API || "http://localhost:4000/api";
+const API_BASE_PERSONAL = window.Chew_API || "http://localhost:4000/api";
 
 const PERSONAL_CREDENTIALS = {
   mesero: {
-    nombre: 'Mesero MenuGo',
-    email: 'Mesero@MenuGo.com',
+    nombre: 'Mesero Chew',
+    email: 'Mesero@Chew.com',
     password: 'MeseroGo321#',
     rol: 'Mesero',
     inicio: 'mesas.html'
   },
   cocina: {
-    nombre: 'Cocina MenuGo',
-    email: 'Cocina@MenuGo.com',
+    nombre: 'Cocina Chew',
+    email: 'Cocina@Chew.com',
     password: 'CocinaGo321#',
     rol: 'Cocina',
     inicio: 'pedidos.html'
@@ -158,13 +158,13 @@ function insertarBarraSesionPersonal(rol, sesion) {
   const rol = obtenerRolPorRutaPersonal();
   const archivoActual = (window.location.pathname.split('/').pop() || '').toLowerCase();
   if (!rol || archivoActual === 'login.html') {
-    window.MENUGO_PERSONAL_BLOQUEADO = false;
+    window.Chew_PERSONAL_BLOQUEADO = false;
     return;
   }
 
   const sesion = obtenerSesionPersonal(rol);
-  window.MENUGO_PERSONAL_SESION = sesion;
-  window.MENUGO_PERSONAL_BLOQUEADO = !sesion;
+  window.Chew_PERSONAL_SESION = sesion;
+  window.Chew_PERSONAL_BLOQUEADO = !sesion;
 
   if (!sesion) {
     window.location.replace('login.html?access=required');

@@ -1,10 +1,10 @@
-if (window.MENUGO_PERSONAL_BLOQUEADO) {
+if (window.Chew_PERSONAL_BLOQUEADO) {
   throw new Error("Acceso bloqueado. Inicia sesion.");
 }
-// MenuGo - pedido manual tomado por el mesero conectado a PostgreSQL.
+// Chew - pedido manual tomado por el mesero conectado a PostgreSQL.
 // El pedido va a cocina; el panel del mesero no lo vera hasta que cocina lo marque listo.
 
-const API_BASE = window.MENUGO_API || "http://localhost:4000/api";
+const API_BASE = window.Chew_API || "http://localhost:4000/api";
 
 const TOTAL_MESAS_MESERO = 20;
 const STORAGE_PEDIDO_TEMPORAL_MESERO = "pedidoMeseroTemporal";
@@ -81,13 +81,13 @@ function actualizarMesaPanel() {
 function productoMeseroDesdeBD(producto) {
   const id =
     producto.codigo_producto || String(producto.id_producto || producto.id);
-  const productoLocal = buscarProductoLocalMenuGo({ ...producto, id });
+  const productoLocal = buscarProductoLocalChew({ ...producto, id });
   const categoriaOriginal =
     producto.categoria || producto.tipo_producto || producto.tipo || "plato";
   const categoria =
     productoLocal?.categoria &&
     ["plato", "bebida", "otros"].includes(
-      normalizarTextoMenuGo(categoriaOriginal),
+      normalizarTextoChew(categoriaOriginal),
     )
       ? productoLocal.categoria
       : categoriaOriginal;
@@ -105,7 +105,7 @@ function productoMeseroDesdeBD(producto) {
   return {
     ...normalizado,
     variantes: [{ nombre: "Unidad", precio: Number(producto.precio || 0) }],
-    opciones: opcionesProductoMenuGo(normalizado),
+    opciones: opcionesProductoChew(normalizado),
   };
 }
 

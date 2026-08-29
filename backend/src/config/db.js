@@ -44,11 +44,11 @@ const clientePool = usaNeon
 const pool = adminPool;
 
 for (const [nombre, instancia] of Object.entries({ pool, adminPool, meseroPool, cocinaPool, clientePool })) {
-  if (instancia && !instancia.__menugoErrorHandler) {
+  if (instancia && !instancia.__ChewErrorHandler) {
     instancia.on("error", (error) => {
       console.error(`Error inesperado en PostgreSQL (${nombre}):`, error.message);
     });
-    instancia.__menugoErrorHandler = true;
+    instancia.__ChewErrorHandler = true;
   }
 }
 

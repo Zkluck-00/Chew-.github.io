@@ -1,4 +1,4 @@
-const API_BASE = window.MENUGO_API || "http://localhost:4000/api";
+const API_BASE = window.Chew_API || "http://localhost:4000/api";
 let carritoResumen = JSON.parse(localStorage.getItem("pedido")) || [];
 const MAX_PLATOS_PEDIDO = 7;
 

@@ -1,4 +1,4 @@
--- MenuGo - migracion para comentarios del cliente al mesero
+-- Chew - migracion para comentarios del cliente al mesero
 
 CREATE TABLE IF NOT EXISTS comentarios_mesa (
     id_comentario_mesa SERIAL PRIMARY KEY,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS comentarios_mesa (
 CREATE INDEX IF NOT EXISTS idx_comentarios_mesa_pendientes
 ON comentarios_mesa(numero_mesa, estado, fecha_creacion DESC);
 
--- MenuGo - notificacion al mesero cuando el cliente solicita cuenta
+-- Chew - notificacion al mesero cuando el cliente solicita cuenta
 CREATE TABLE IF NOT EXISTS solicitudes_cuenta (
     id_solicitud SERIAL PRIMARY KEY,
     id_grupo_mesa INTEGER NOT NULL REFERENCES grupos_mesa(id_grupo_mesa) ON DELETE CASCADE,
@@ -32,14 +32,14 @@ CREATE TABLE IF NOT EXISTS solicitudes_cuenta (
 CREATE INDEX IF NOT EXISTS idx_solicitudes_cuenta_pendientes
 ON solicitudes_cuenta(id_grupo_mesa, estado, fecha_solicitud DESC);
 
--- MenuGo - soporte para seguimiento de pedidos para llevar
+-- Chew - soporte para seguimiento de pedidos para llevar
 -- No se crea una tabla nueva: se utiliza la tabla pedidos existente.
 -- El codigo visible del cliente se genera como LLEV-001, LLEV-002, etc. a partir del id_pedido.
 CREATE INDEX IF NOT EXISTS idx_pedidos_llevar_estado
 ON pedidos(tipo_pedido, estado, fecha_creacion DESC)
 WHERE tipo_pedido = 'llevar';
 
--- MenuGo - credenciales de trabajadores por rol
+-- Chew - credenciales de trabajadores por rol
 ALTER TABLE trabajador
 ADD COLUMN IF NOT EXISTS usuario_acceso VARCHAR(100);
 
@@ -79,7 +79,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_trabajador_correo_acceso
 ON trabajador(LOWER(correo))
 WHERE correo IS NOT NULL;
 
--- MenuGo - disponibilidad independiente para consumo local y pedidos para llevar
+-- Chew - disponibilidad independiente para consumo local y pedidos para llevar
 ALTER TABLE platos
 ADD COLUMN IF NOT EXISTS disponible_llevar BOOLEAN NOT NULL DEFAULT true;
 

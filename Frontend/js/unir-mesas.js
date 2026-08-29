@@ -1,8 +1,8 @@
-if (window.MENUGO_PERSONAL_BLOQUEADO) { throw new Error('Acceso bloqueado. Inicia sesion.'); }
-// MenuGo - union de mesas conectada a PostgreSQL.
+if (window.Chew_PERSONAL_BLOQUEADO) { throw new Error('Acceso bloqueado. Inicia sesion.'); }
+// Chew - union de mesas conectada a PostgreSQL.
 // Ya no usa localStorage como fuente principal; muestra las mismas mesas que devuelve el backend.
 
-const API_BASE = window.MENUGO_API || "http://localhost:4000/api";
+const API_BASE = window.Chew_API || "http://localhost:4000/api";
 let mesasUnir = [];
 let gruposUnir = [];
 

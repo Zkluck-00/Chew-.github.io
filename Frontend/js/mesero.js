@@ -1,5 +1,5 @@
-if (window.MENUGO_PERSONAL_BLOQUEADO) { throw new Error('Acceso bloqueado. Inicia sesion.'); }
-const API_BASE = window.MENUGO_API || "http://localhost:4000/api";
+if (window.Chew_PERSONAL_BLOQUEADO) { throw new Error('Acceso bloqueado. Inicia sesion.'); }
+const API_BASE = window.Chew_API || "http://localhost:4000/api";
 let vistaMesero = "listos";
 let pedidosListos = [];
 let pedidosMesero = [];

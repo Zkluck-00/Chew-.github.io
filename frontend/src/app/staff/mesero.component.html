@@ -1,0 +1,42 @@
+<div class="pagina-titulo"><p class="eyebrow">OPERACIONES · MESERO</p><h1>Entregas y cobros</h1><p>El mesero entrega los pedidos y registra el pago. Ya no existe un rol de cajero.</p></div>
+<div class="cuadros-resumen"><div class="panel mini"><span>LISTOS PARA ENTREGAR</span><strong>{{listosParaEntregar.length}}</strong></div>
+  <div class="panel mini"><span>CUENTAS ACTIVAS</span><strong>{{cuentas.length}}</strong></div>
+  <div class="panel mini"><span>ACTUALIZACION</span><strong>12 s</strong></div></div>
+@if (error) {<div class="alerta-error" role="alert">{{error}}</div>}
+@if (mensaje) {<div class="alerta-ok" role="status">{{mensaje}}</div>}
+<div class="acciones separadas"><span>El cobro se confirma manualmente despues de recibir el dinero o la confirmacion del POS/Yape.</span><button class="btn btn-fantasma" (click)="actualizar()" [disabled]="cargando">Actualizar ↻</button></div>
+<section class="seccion"><h2>Pedidos listos para llevar a la mesa</h2><div class="lista-pedidos">
+  @for (p of listosParaEntregar; track p.idPedido) {
+    <article class="panel"><div class="barra-seccion"><div><p class="eyebrow">MESA {{p.mesa}}</p><h3>{{p.codigo}}</h3></div><span class="etiqueta-estado">Listo para entregar</span></div>
+      @for (i of p.productos;track i.idDetalleProducto){<div class="fila-item"><div><strong>{{i.nombre}} × {{i.cantidad}}</strong><p>{{i.observacion||'Sin observaciones'}}</p></div><span>{{i.subtotal | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</span></div>}
+      <button class="btn ancho" type="button" (click)="entregar(p.idPedido)" [disabled]="accionando">Marcar entregado a la mesa</button>
+    </article>
+  } @empty {<div class="panel">No hay pedidos completamente listos para entregar.</div>}
+</div></section>
+<section class="seccion"><h2>Cuentas de las mesas</h2><div class="cuentas-grid">
+  @for (c of cuentas; track c.idGrupoMesa) {
+    <article class="panel cuenta"><p class="eyebrow">CUENTA {{c.idGrupoMesa}}</p><h3>Mesa {{c.numeroMesa}}</h3><p>{{c.pedidos}} pedido(s)</p>
+      <strong class="precio-grande">{{c.total | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong>
+      <p>{{c.entregado ? 'Productos entregados' : 'Esperando entrega de productos'}}</p>
+      <button type="button" class="btn ancho" (click)="abrirCobro(c)" [disabled]="!c.cobrable || accionando">{{c.cobrable ? 'Registrar cobro' : 'No disponible para cobro'}}</button>
+    </article>
+  } @empty {<div class="panel">No hay cuentas activas.</div>}
+</div></section>
+@if (cuentaSeleccionada) {
+  <section class="panel panel-cobro"><h2>Confirmar cobro · Mesa {{cuentaSeleccionada.numeroMesa}}</h2>
+    <p>Total calculado por Spring Boot: <strong>{{cuentaSeleccionada.total | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong></p>
+    <form [formGroup]="pagoForm" (ngSubmit)="cobrar()">
+      <label class="etiqueta" for="metodo">Metodo de pago</label><select id="metodo" class="campo ancho" formControlName="metodo"><option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta / POS</option><option value="YAPE">Yape</option></select>
+      <p class="aviso">Esta pantalla registra un pago efectuado externamente. No se conecta con un POS real ni valida operaciones bancarias.</p>
+      <label class="checkbox"><input type="checkbox" formControlName="confirmar" /> Confirmo que ya recibi el pago / verifique el POS o Yape.</label>
+      <div class="acciones"><button class="btn" type="submit" [disabled]="pagoForm.invalid||accionando">{{accionando?'Registrando...':'Registrar cobro y generar ticket'}}</button><button class="btn btn-fantasma" type="button" (click)="cerrarCobro()">Cancelar</button></div>
+    </form>
+  </section>
+}
+@if (ticket) {
+  <section class="panel comprobante" id="ticket-imprimible"><p class="eyebrow">COMPROBANTE INTERNO · CHEW</p><h2>Ticket N.° {{ticket.id}}</h2>
+    <p>Mesa {{ticket.numeroMesa}} · Cuenta {{ticket.idGrupoMesa}}</p><p>Metodo: {{ticket.metodo}}</p><p>Registrado por: {{ticket.registradoPor}}</p><p>Fecha: {{ticket.fechaRegistro | date:'medium'}}</p>
+    <h2>{{ticket.monto | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</h2><p>Registro academico. No es comprobante tributario.</p>
+    <button class="btn" type="button" (click)="imprimir()">Imprimir ticket</button>
+  </section>
+}

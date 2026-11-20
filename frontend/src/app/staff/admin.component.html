@@ -1,0 +1,48 @@
+<div class="pagina-titulo"><p class="eyebrow">GESTION DEL RESTAURANTE</p><h1>Panel del administrador</h1><p>Control de catalogo y personal. Solo disponible con JWT y rol ADMIN.</p></div>
+<div class="pestanas"><button type="button" [class.activa]="tab==='catalogo'" (click)="tab='catalogo'">Platos y bebidas</button><button type="button" [class.activa]="tab==='personal'" (click)="tab='personal'">Usuarios y roles</button><button type="button" (click)="recargar()">Actualizar ↻</button></div>
+@if (error) {<div class="alerta-error" role="alert">{{error}}</div>}
+@if (mensaje) {<div class="alerta-ok" role="status">{{mensaje}}</div>}
+@if (tab==='catalogo') {
+  <div class="dos-columnas admin-grid">
+    <section class="panel"><div class="barra-seccion"><h2>{{idActual ? 'Editar' : 'Nuevo'}} producto</h2><button class="btn btn-fantasma" (click)="nuevo()" type="button">Limpiar</button></div>
+      <div class="pestanas"><button type="button" [class.activa]="tipo==='platos'" (click)="seleccionarTipo('platos')">Plato</button><button type="button" [class.activa]="tipo==='bebidas'" (click)="seleccionarTipo('bebidas')">Bebida</button></div>
+      <form [formGroup]="productoForm" (ngSubmit)="guardarProducto()" novalidate>
+        <label class="etiqueta" for="p-codigo">Codigo</label><input id="p-codigo" class="campo ancho" formControlName="codigo" maxlength="40" />
+        <label class="etiqueta" for="p-nombre">Nombre</label><input id="p-nombre" class="campo ancho" formControlName="nombre" maxlength="100" />
+        <label class="etiqueta" for="p-descrip">Descripcion</label><textarea id="p-descrip" class="campo ancho" formControlName="descripcion" rows="2"></textarea>
+        <label class="etiqueta" for="p-cat">Categoria</label><input id="p-cat" class="campo ancho" formControlName="categoria" maxlength="50" />
+        <div class="form-dos"><div><label class="etiqueta" for="p-precio">Precio (S/)</label><input id="p-precio" class="campo ancho" formControlName="precio" type="number" step="0.01" min="0.01" /></div><div><label class="etiqueta" for="p-stock">Cantidad disponible</label><input id="p-stock" class="campo ancho" formControlName="cantidad" type="number" min="0" /></div></div>
+        <label class="etiqueta" for="p-img">Imagen (URL opcional)</label><input id="p-img" class="campo ancho" formControlName="imagen" />
+        <label class="checkbox"><input type="checkbox" formControlName="activo" /> Producto activo</label>
+        @if (tipo==='platos') {<label class="checkbox"><input type="checkbox" formControlName="disponibleLlevar" /> Disponible para llevar</label>}
+        @if (productoForm.invalid && productoForm.touched) {<div class="error-campo">Completa codigo, nombre, precio mayor a cero y cantidad valida.</div>}
+        <button class="btn ancho" type="submit" [disabled]="guardando">{{guardando ? 'Guardando...' : 'Guardar producto'}}</button>
+      </form>
+    </section>
+    <section class="panel"><h2>Catalogo actual</h2><p class="texto-secundario">Editar o desactivar productos sin borrar su historial.</p>
+      <div class="lista-scroll">@for (p of (tipo==='platos' ? platos : bebidas); track $index) {
+        <div class="fila-item"><div><strong>{{p.nombre}}</strong><p>{{p.categoria}} · <span [class.texto-apagado]="!p.activo">{{p.activo ? 'Activo' : 'Inactivo'}}</span></p><span>{{p.precio | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</span></div>
+          <div class="acciones-verticales"><button class="btn btn-pequeno btn-fantasma" (click)="editar(p)" type="button">Editar</button><button class="btn btn-pequeno btn-peligro" (click)="desactivar(p)" [disabled]="!p.activo" type="button">Desactivar</button></div></div>
+      } @empty {<p>No hay productos cargados.</p>}</div>
+    </section>
+  </div>
+} @else {
+  <div class="dos-columnas admin-grid">
+    <section class="panel"><h2>Nuevo trabajador</h2><p class="texto-secundario">Solo ADMIN puede crear usuarios. La contraseña se guarda como hash BCrypt.</p>
+      <form [formGroup]="usuarioForm" (ngSubmit)="crearUsuario()" novalidate>
+        <label class="etiqueta" for="u-nombre">Usuario</label><input id="u-nombre" class="campo ancho" formControlName="username" autocomplete="off" maxlength="80" />
+        <label class="etiqueta" for="u-clave">Contraseña temporal (minimo 10 caracteres)</label><input id="u-clave" class="campo ancho" type="password" formControlName="password" autocomplete="new-password" />
+        <label class="etiqueta" for="u-rol">Rol</label><select id="u-rol" class="campo ancho" formControlName="rol"><option value="MESERO">MESERO</option><option value="COCINA">COCINA</option><option value="ADMIN">ADMIN</option></select>
+        @if (usuarioForm.invalid && usuarioForm.touched) {<p class="error-campo">Usuario de 3 caracteres y contraseña de 10 o mas.</p>}
+        <button class="btn ancho" type="submit" [disabled]="guardando">Crear usuario</button>
+      </form>
+    </section>
+    <section class="panel"><h2>Usuarios registrados</h2><p class="texto-secundario">Cambiar permisos o activar/desactivar trabajadores.</p>
+      <div class="lista-scroll">@for (u of usuarios; track u.id) {
+        <div class="fila-item"><div><strong>{{u.username}}</strong><p>{{u.activo ? 'Activo' : 'Desactivado'}}</p>
+          <select class="campo" [value]="u.rol" #rolSelector (change)="actualizarRol(u, rolSelector.value)"><option value="ADMIN">ADMIN</option><option value="MESERO">MESERO</option><option value="COCINA">COCINA</option></select>
+        </div><button type="button" class="btn btn-pequeno" (click)="cambiarUsuario(u,{activo:!u.activo})">{{u.activo ? 'Desactivar' : 'Activar'}}</button></div>
+      } @empty {<p>No hay usuarios registrados.</p>}</div>
+    </section>
+  </div>
+}

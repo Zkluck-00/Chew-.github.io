@@ -9,6 +9,8 @@ import { jwtInterceptor } from './app/core/auth.interceptor';
 import { roleGuard } from './app/core/auth.guard';
 import { AdminComponent } from './app/staff/admin.component';
 import { LoginComponent } from './app/staff/login.component';
+import { OpcionesPreparacionComponent } from './app/cliente/opciones-preparacion';
+import { OpcionPreparacion } from './app/core/models';
 import { SinAccesoComponent } from './app/staff/sin-acceso.component';
 
 interface Plato {
@@ -21,6 +23,7 @@ interface Plato {
   nombreCarta?: string | null;
   grupoCatalogo?: string | null;
   variante?: string | null;
+  opciones?: OpcionPreparacion[];
 }
 
 interface ProductoCarta {
@@ -32,6 +35,15 @@ interface ProductoCarta {
   variantes: Plato[];
 }
 
+interface LineaCarta {
+  clave: string;
+  idPlato: number;
+  nombre: string;
+  precio: number;
+  opciones: string[];
+  cantidad: number;
+}
+
 interface Recibo {
   idPedido: number;
   total: number;
@@ -39,7 +51,7 @@ interface Recibo {
 
 @Component({
   selector: 'app-carta',
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, OpcionesPreparacionComponent],
   templateUrl: './app/cliente/carta.component.html',
   styleUrl: './app/cliente/carta.component.scss',
 })
@@ -87,12 +99,19 @@ class Carta {
     if (imagen.getAttribute('src') !== '/chew-logo.png') imagen.src = '/chew-logo.png';
   }
 
-  readonly cantidades = signal<Record<number, number>>({});
-  readonly unidades = computed(() => Object.values(this.cantidades()).reduce((suma, n) => suma + n, 0));
-  readonly seleccion = computed(() => (this.platos() ?? []).flatMap(plato => {
-    const cantidad = this.cantidades()[plato.idPlato];
-    return cantidad ? [{ ...plato, cantidad }] : [];
-  }));
+  readonly preparaciones = signal<Partial<Record<number, string[]>>>({});
+  readonly seleccion = signal<LineaCarta[]>([]);
+  readonly unidades = computed(() => this.seleccion().reduce((total, linea) => total + linea.cantidad, 0));
+
+  elegirPreparacion(idPlato: number, opciones: string[]): void {
+    this.preparaciones.update(actual => ({ ...actual, [idPlato]: opciones }));
+  }
+
+  cantidad(idPlato: number, opciones: string[]): number {
+    const clave = JSON.stringify([idPlato, opciones]);
+    return this.seleccion().find(linea => linea.clave === clave)?.cantidad ?? 0;
+  }
+
   readonly totalEstimado = computed(() =>
     this.seleccion().reduce((total, plato) => total + plato.precio * plato.cantidad, 0),
   );
@@ -114,11 +133,18 @@ class Carta {
     });
   }
 
-  cambiar(idPlato: number, cambio: number): void {
-    const cantidad = (this.cantidades()[idPlato] ?? 0) + cambio;
-    if (this.enviando() || cantidad < 0 || this.unidades() + cambio > 7) return;
+  cambiar(plato: Pick<Plato, 'idPlato' | 'nombre' | 'precio'>, opciones: string[], cambio: number): void {
+    if (this.enviando() || this.unidades() + cambio > 7) return;
+    const clave = JSON.stringify([plato.idPlato, opciones]);
+    const previa = this.seleccion().find(linea => linea.clave === clave);
+    const cantidad = (previa?.cantidad ?? 0) + cambio;
+    if (cantidad < 0) return;
 
-    this.cantidades.update(actual => ({ ...actual, [idPlato]: cantidad }));
+    this.seleccion.update(actual => {
+      if (cantidad === 0) return actual.filter(linea => linea.clave !== clave);
+      if (!previa) return [...actual, { ...plato, opciones, clave, cantidad }];
+      return actual.map(linea => linea.clave === clave ? { ...linea, cantidad } : linea);
+    });
     this.idSolicitud = null;
     this.errorPedido.set('');
     this.recibo.set(null);
@@ -127,9 +153,7 @@ class Carta {
   enviar(): void {
     if (!this.tieneQr || this.enviando() || !this.unidades() || this.unidades() > 7) return;
 
-    const items = Object.entries(this.cantidades())
-      .filter(([, cantidad]) => cantidad > 0)
-      .map(([idPlato, cantidad]) => ({ idPlato: Number(idPlato), cantidad }));
+    const items = this.seleccion().map(({idPlato, cantidad, opciones}) => ({idPlato, cantidad, opciones}));
 
     this.idSolicitud ??= crypto.randomUUID();
     this.errorPedido.set('');
@@ -140,7 +164,7 @@ class Carta {
     }).subscribe({
       next: recibo => {
         this.recibo.set(recibo);
-        this.cantidades.set({});
+        this.seleccion.set([]);
         this.idSolicitud = null;
         this.enviando.set(false);
       },

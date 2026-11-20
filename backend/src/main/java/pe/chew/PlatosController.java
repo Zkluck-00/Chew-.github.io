@@ -1,5 +1,7 @@
 package pe.chew;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -124,11 +126,17 @@ public class PlatosController {
 
     private static final String COLUMNAS = """
             SELECT id_plato, codigo_plato, nombre, descripcion, categoria, precio, imagen,
-                   activo, grupo_catalogo, nombre_carta, variante FROM platos
+                   activo, grupo_catalogo, nombre_carta, variante, opciones_preparacion FROM platos
             """;
 
     public record Plato(long idPlato, String codigoPlato, String nombre, String descripcion, String categoria,
-            BigDecimal precio, String imagen, boolean activo, String grupoCatalogo, String nombreCarta, String variante) {}
+            BigDecimal precio, String imagen, boolean activo, String grupoCatalogo, String nombreCarta, String variante,
+            @JsonIgnore String opcionesPreparacion) {
+        @JsonProperty("opciones")
+        public List<OpcionesPreparacion.Opcion> opciones() {
+            return OpcionesPreparacion.catalogo(opcionesPreparacion);
+        }
+    }
 
     public record Producto(@NotBlank @Size(max = 40) String codigoPlato, @NotBlank @Size(max = 100) String nombre,
             @Size(max = 100) String nombreCarta, @Size(max = 500) String descripcion,

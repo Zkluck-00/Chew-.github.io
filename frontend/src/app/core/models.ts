@@ -1,11 +1,13 @@
 export type Rol = 'ADMIN' | 'MESERO' | 'COCINA';
 export type TipoProducto = 'plato' | 'bebida';
+export interface OpcionPreparacion { nombre: string; grupo: string | null; }
 
 export interface Plato {
   idPlato: number; codigoPlato: string; nombre: string; descripcion: string;
   categoria: string; precio: number; cantidadDePlatos: number; disponibleLlevar: boolean;
   activo: boolean; imagen: string;
   grupoCatalogo?: string | null; nombreCarta?: string | null; variante?: string | null;
+  opciones?: OpcionPreparacion[];
 }
 export interface Bebida {
   idBebida: number; codigoBebida: string; nombre: string; descripcion: string;

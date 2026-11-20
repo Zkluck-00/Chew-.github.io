@@ -64,17 +64,20 @@
                 }
                 @for (plato of producto.variantes; track plato.idPlato) {
                   @if (plato.idPlato === elegido) {
+                    @let opciones = preparaciones()[plato.idPlato] ?? [];
+                    <app-opciones-preparacion [opciones]="plato.opciones ?? []" [elegidas]="opciones"
+                      (elegidasChange)="elegirPreparacion(plato.idPlato, $event)" />
                     <div class="producto-pie">
                       <strong>{{ plato.precio | currency:'PEN':'S/ ' }}</strong>
                       @if (tieneQr) {
                         <div class="pasos" [attr.aria-label]="'Cantidad de ' + plato.nombre" role="group">
                           <button type="button" [attr.aria-label]="'Quitar ' + plato.nombre"
-                            [disabled]="enviando() || !cantidades()[plato.idPlato]"
-                            (click)="cambiar(plato.idPlato, -1)">−</button>
-                          <span>{{ cantidades()[plato.idPlato] || 0 }}</span>
+                            [disabled]="enviando() || !cantidad(plato.idPlato, opciones)"
+                            (click)="cambiar(plato, opciones, -1)">−</button>
+                          <span>{{ cantidad(plato.idPlato, opciones) }}</span>
                           <button type="button" [attr.aria-label]="'Agregar ' + plato.nombre"
                             [disabled]="enviando() || unidades() >= 7"
-                            (click)="cambiar(plato.idPlato, 1)">+</button>
+                            (click)="cambiar(plato, opciones, 1)">+</button>
                         </div>
                       }
                     </div>
@@ -94,10 +97,16 @@
     @if (tieneQr) {
       <aside id="carrito" class="panel panel-total" aria-labelledby="titulo-carrito">
         <h2 id="titulo-carrito">Mi carrito</h2>
-        @for (plato of seleccion(); track plato.idPlato) {
+        @for (plato of seleccion(); track plato.clave) {
           <div class="fila-item">
-            <span>{{ plato.cantidad }} × {{ plato.nombre }}</span>
-            <strong>{{ plato.precio * plato.cantidad | currency:'PEN':'S/ ' }}</strong>
+            <div>
+              <strong>{{ plato.cantidad }} × {{ plato.nombre }}</strong>
+              @if (plato.opciones.length) { <p>{{ plato.opciones.join(' · ') }}</p> }
+              <span class="monto">{{ plato.precio * plato.cantidad | currency:'PEN':'S/ ' }}</span>
+            </div>
+            <button class="btn btn-pequeno btn-fantasma" type="button" [disabled]="enviando()"
+              [attr.aria-label]="'Quitar una unidad de ' + plato.nombre + ' del carrito'"
+              (click)="cambiar(plato, plato.opciones, -1)">−</button>
           </div>
         } @empty {
           @if (!recibo()) { <p>Tu carrito está vacío.</p> }

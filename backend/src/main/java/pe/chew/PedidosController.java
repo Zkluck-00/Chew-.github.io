@@ -57,32 +57,29 @@ public class PedidosController {
         if (anterior.isPresent())
             return anterior.get();
 
-        Map<Long, Integer> cantidades = new HashMap<>();
-        int unidades = 0;
-        for (Item item : items) {
-            unidades += item.cantidad();
-            if (cantidades.put(item.idPlato(), item.cantidad()) != null || unidades > 7) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Pedido inválido o superior a siete unidades");
-            }
-        }
+        if (items.stream().mapToInt(Item::cantidad).sum() > 7)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Máximo siete unidades por pedido");
 
-        var platos = jdbc.sql("""
-                SELECT id_plato, nombre, precio FROM platos
+        var ids = items.stream().map(Item::idPlato).distinct().toList();
+        var platos = new HashMap<Long, Plato>();
+        jdbc.sql("""
+                SELECT id_plato, nombre, precio, opciones_preparacion FROM platos
                 WHERE activo AND id_plato IN (:ids)
-                """).param("ids", cantidades.keySet())
-                .query((fila, numero) -> new Plato(fila.getLong("id_plato"),
-                        fila.getString("nombre"), fila.getBigDecimal("precio")))
-                .list();
+                """).param("ids", ids).query(Plato.class).list()
+                .forEach(plato -> platos.put(plato.idPlato(), plato));
+        if (platos.size() != ids.size())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hay platos que ya no están disponibles");
 
-        if (platos.size() != cantidades.size()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Hay platos que ya no están disponibles");
+        var detalles = new LinkedHashMap<Detalle, Integer>();
+        for (Item item : items) {
+            Plato plato = platos.get(item.idPlato());
+            String opciones = OpcionesPreparacion.validar(item.opciones(), plato.opcionesPreparacion());
+            var detalle = new Detalle(plato, opciones);
+            if (detalles.put(detalle, item.cantidad()) != null)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El pedido repite la misma presentación y opciones");
         }
-
-        BigDecimal total = platos.stream()
-                .map(plato -> plato.precio().multiply(
-                        BigDecimal.valueOf(cantidades.get(plato.id()))))
+        BigDecimal total = detalles.entrySet().stream()
+                .map(detalle -> detalle.getKey().plato().precio().multiply(BigDecimal.valueOf(detalle.getValue())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var nuevo = jdbc.sql("""
@@ -100,14 +97,16 @@ public class PedidosController {
             return buscarRecibo(mesa, idSolicitud).orElseThrow();
 
         Recibo recibo = nuevo.get();
-        for (Plato plato : platos) {
+        for (var linea : detalles.entrySet()) {
+            var detalle = linea.getKey();
+            Plato plato = detalle.plato();
             jdbc.sql("""
                     INSERT INTO detalles_pedido
-                        (id_pedido, id_plato, nombre_plato, cantidad, precio_unitario)
-                    VALUES (:pedido, :plato, :nombre, :cantidad, :precio)
-                    """).param("pedido", recibo.idPedido()).param("plato", plato.id())
-                    .param("nombre", plato.nombre()).param("cantidad", cantidades.get(plato.id()))
-                    .param("precio", plato.precio()).update();
+                        (id_pedido, id_plato, nombre_plato, cantidad, precio_unitario, opciones_preparacion)
+                    VALUES (:pedido, :plato, :nombre, :cantidad, :precio, :opciones)
+                    """).param("pedido", recibo.idPedido()).param("plato", plato.idPlato())
+                    .param("nombre", plato.nombre()).param("cantidad", linea.getValue())
+                    .param("precio", plato.precio()).param("opciones", detalle.opciones()).update();
         }
         return recibo;
     }
@@ -130,12 +129,12 @@ public class PedidosController {
     public record SolicitudManual(@NotNull @Positive Integer mesa, @NotNull UUID idSolicitud,
             @NotEmpty @Size(max = 7) List<@NotNull @Valid Item> items) {}
 
-    public record Item(@NotNull @Positive Long idPlato, @NotNull @Min(1) @Max(7) Integer cantidad) {
-    }
+    public record Item(@NotNull @Positive Long idPlato, @NotNull @Min(1) @Max(7) Integer cantidad,
+            @Size(max = 2) List<@NotBlank @Size(max = 70) String> opciones) {}
 
     public record Recibo(long idPedido, BigDecimal total) {
     }
 
-    private record Plato(long id, String nombre, BigDecimal precio) {
-    }
+    private record Plato(long idPlato, String nombre, BigDecimal precio, String opcionesPreparacion) {}
+    private record Detalle(Plato plato, String opciones) {}
 }

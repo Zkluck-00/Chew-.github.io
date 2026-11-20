@@ -37,6 +37,10 @@
           },
           "configurations": {
             "production": {
+              "outputPath": {
+                "base": "dist/chew-angular",
+                "browser": ""
+              },
               "budgets": [
                 {
                   "type": "initial",

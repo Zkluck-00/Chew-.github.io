@@ -5,6 +5,7 @@ export interface Plato {
   idPlato: number; codigoPlato: string; nombre: string; descripcion: string;
   categoria: string; precio: number; cantidadDePlatos: number; disponibleLlevar: boolean;
   activo: boolean; imagen: string;
+  grupoCatalogo?: string | null; nombreCarta?: string | null; variante?: string | null;
 }
 export interface Bebida {
   idBebida: number; codigoBebida: string; nombre: string; descripcion: string;

@@ -2,13 +2,11 @@ package pe.chew;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import jakarta.validation.constraints.Positive;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,22 +20,46 @@ import org.springframework.web.server.ResponseStatusException;
 public class PedidosPersonalController {
     private final JdbcClient jdbc;
     private final CobrosMesaService cobros;
-    private final String claveCocina;
-    private final String claveMesero;
+    private final PersonalService personal;
+    private final MesasService mesas;
 
-    public PedidosPersonalController(JdbcClient jdbc, CobrosMesaService cobros,
-            @Value("${CHEW_COCINA_TOKEN:}") String claveCocina,
-            @Value("${CHEW_MESERO_TOKEN:}") String claveMesero) {
+    public PedidosPersonalController(JdbcClient jdbc, CobrosMesaService cobros, PersonalService personal,
+            MesasService mesas) {
         this.jdbc = jdbc;
         this.cobros = cobros;
-        this.claveCocina = claveCocina;
-        this.claveMesero = claveMesero;
+        this.personal = personal;
+        this.mesas = mesas;
     }
+
+    @GetMapping("/mesero/mesas")
+    public ResponseEntity<List<MesasService.Mesa>> listarMesas(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(mesas.listar());
+    }
+
+    @PostMapping("/mesero/mesas/uniones")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unirMesas(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion,
+            @Valid @RequestBody Union solicitud) {
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
+        mesas.unir(solicitud.principal(), solicitud.secundaria());
+    }
+
+    @DeleteMapping("/mesero/mesas/{numero}/union")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void separarMesas(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion,
+            @PathVariable int numero) {
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
+        mesas.separar(numero);
+    }
+
+    public record Union(@NotNull @Positive Integer principal, @NotNull @Positive Integer secundaria) {}
 
     @GetMapping("/cocina/pedidos")
     public ResponseEntity<List<Comanda>> listarCocina(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
-        autorizar(claveCocina, autorizacion);
+        personal.exigirOperativo(PersonalService.Rol.COCINA, autorizacion);
         return listar(List.of("RECIBIDO", "PREPARANDO", "LISTO"));
     }
 
@@ -45,7 +67,7 @@ public class PedidosPersonalController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cambiarEstadoCocina(@PathVariable long idPedido, @Valid @RequestBody Cambio cambio,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
-        autorizar(claveCocina, autorizacion);
+        personal.exigirOperativo(PersonalService.Rol.COCINA, autorizacion);
         String anterior = switch (cambio.estado()) {
             case PREPARANDO -> "RECIBIDO";
             case LISTO -> "PREPARANDO";
@@ -56,7 +78,7 @@ public class PedidosPersonalController {
     @GetMapping("/mesero/pedidos")
     public ResponseEntity<List<Comanda>> listarMesero(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
-        autorizar(claveMesero, autorizacion);
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
         return listar(List.of("LISTO"));
     }
 
@@ -64,14 +86,14 @@ public class PedidosPersonalController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void entregar(@PathVariable long idPedido,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
-        autorizar(claveMesero, autorizacion);
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
         actualizar(idPedido, "LISTO", "ENTREGADO");
     }
 
     @GetMapping("/mesero/cuentas")
     public ResponseEntity<List<CobrosMesaService.Cuenta>> listarCuentas(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
-        autorizar(claveMesero, autorizacion);
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(cobros.listar());
     }
 
@@ -79,7 +101,7 @@ public class PedidosPersonalController {
     public ResponseEntity<CobrosMesaService.Recibo> cobrar(@PathVariable long idMesa,
             @Valid @RequestBody CobrosMesaService.Solicitud solicitud,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
-        autorizar(claveMesero, autorizacion);
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(cobros.cobrar(idMesa, solicitud));
     }
 
@@ -124,18 +146,6 @@ public class PedidosPersonalController {
         if (!nuevo.equals(actual)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "El pedido no permite ese cambio de estado");
-        }
-    }
-
-    private void autorizar(String clave, String autorizacion) {
-        if (clave.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE, "Falta configurar la clave de acceso");
-        }
-        if (autorizacion == null || !MessageDigest.isEqual(
-                ("Bearer " + clave).getBytes(StandardCharsets.UTF_8),
-                autorizacion.getBytes(StandardCharsets.UTF_8))) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Clave inválida");
         }
     }
 

@@ -26,16 +26,20 @@ import org.springframework.web.server.ResponseStatusException;
 public class CobrosMesaService {
     private final JdbcClient jdbc;
 
-    public CobrosMesaService(JdbcClient jdbc) {
+    private final MesasService mesas;
+
+    public CobrosMesaService(JdbcClient jdbc, MesasService mesas) {
         this.jdbc = jdbc;
+        this.mesas = mesas;
     }
 
     public List<Cuenta> listar() {
         var pedidos = jdbc.sql("""
-                SELECT m.numero, p.id_mesa, p.id_pedido, p.estado, p.total
+                SELECT principal.numero, principal.id_mesa, p.id_pedido, p.estado, p.total
                 FROM pedidos p JOIN mesas m USING (id_mesa)
+                JOIN mesas principal ON principal.id_mesa = COALESCE(m.id_mesa_principal, m.id_mesa)
                 WHERE p.id_cobro IS NULL AND p.estado <> 'CANCELADO'
-                ORDER BY m.numero, p.id_pedido
+                ORDER BY principal.numero, p.id_pedido
                 """).query((fila, numero) -> new PedidoPendiente(fila.getLong("id_mesa"), fila.getInt("numero"),
                         fila.getLong("id_pedido"), fila.getString("estado"), fila.getBigDecimal("total"))).list();
 
@@ -56,6 +60,7 @@ public class CobrosMesaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La solicitud repite pedidos");
         }
 
+        mesas.bloquear();
         int mesa = jdbc.sql("SELECT numero FROM mesas WHERE id_mesa = :mesa FOR UPDATE")
                 .param("mesa", idMesa).query(Integer.class).optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mesa inexistente"));
@@ -71,7 +76,10 @@ public class CobrosMesaService {
 
         var pedidos = jdbc.sql("""
                 SELECT id_pedido, estado, total FROM pedidos
-                WHERE id_mesa = :mesa AND id_cobro IS NULL AND estado <> 'CANCELADO'
+                WHERE id_mesa IN (
+                    SELECT id_mesa FROM mesas
+                    WHERE COALESCE(id_mesa_principal, id_mesa) = :mesa
+                ) AND id_cobro IS NULL AND estado <> 'CANCELADO'
                 ORDER BY id_pedido FOR UPDATE
                 """).param("mesa", idMesa)
                 .query((fila, numero) -> new PedidoPendiente(idMesa, mesa, fila.getLong("id_pedido"),
@@ -95,9 +103,9 @@ public class CobrosMesaService {
 
         int asociados = jdbc.sql("""
                 UPDATE pedidos SET id_cobro = :cobro
-                WHERE id_mesa = :mesa AND id_pedido IN (:pedidos) AND id_cobro IS NULL AND estado = 'ENTREGADO'
+                WHERE id_pedido IN (:pedidos) AND id_cobro IS NULL AND estado = 'ENTREGADO'
                 """).param("cobro", Objects.requireNonNull(clave.getKey()).longValue())
-                .param("mesa", idMesa).param("pedidos", ids).update();
+                .param("pedidos", ids).update();
         if (asociados != ids.size()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La cuenta cambió durante el cobro");
         }

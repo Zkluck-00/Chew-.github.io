@@ -1,13 +1,13 @@
 <div class="login-layout"><div class="login-ilustracion"><p class="eyebrow">ACCESO INTERNO</p><h1>Bienvenido al equipo Chew.</h1><p>Panel exclusivo para administradores, meseros y personal de cocina.</p><div class="simbolo-grande">C</div></div>
-<section class="panel login-panel"><p class="eyebrow">AUTENTICACION JWT</p><h2>Ingresar al sistema</h2><p class="texto-secundario">Utiliza tu usuario y contraseña del personal.</p>
+<section class="panel login-panel"><h2>Ingresar al sistema</h2><p class="texto-secundario">Utiliza tu usuario y contraseña del personal.</p>
   @if (error) {<div class="alerta-error" role="alert">{{error}}</div>}
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     <label class="etiqueta" for="usuario">Usuario</label><input class="campo ancho" id="usuario" type="text" formControlName="username" autocomplete="username" maxlength="80" />
     @if (form.controls.username.touched && form.controls.username.invalid) {<small class="error-campo">Ingresa al menos 3 caracteres.</small>}
     <label class="etiqueta" for="password">Contraseña</label><input class="campo ancho" id="password" type="password" formControlName="password" autocomplete="current-password" />
     @if (form.controls.password.touched && form.controls.password.invalid) {<small class="error-campo">La contraseña es obligatoria.</small>}
-    <button class="btn ancho" type="submit" [disabled]="enviando">{{enviando ? 'Validando...' : 'Iniciar sesion'}}</button>
+    <button class="btn ancho" type="submit" [disabled]="enviando">{{enviando ? 'Validando...' : 'Iniciar sesión'}}</button>
   </form>
-  <p class="texto-secundario">El administrador crea las cuentas de mesero y cocina. Los clientes no necesitan iniciar sesion.</p>
-  <a routerLink="/menu" class="link-centro">Regresar al menu del cliente</a>
+  <p class="texto-secundario">El administrador crea las cuentas de mesero y cocina. </p>
+  <a routerLink="/" class="link-centro">Regresar a la carta</a>
 </section></div>

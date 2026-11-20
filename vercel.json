@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://chew-github-io.onrender.com/api/:path*"
+    },
+    { "source": "/cocina", "destination": "/index.html" },
+    { "source": "/mesero", "destination": "/index.html" }
+  ]
+}

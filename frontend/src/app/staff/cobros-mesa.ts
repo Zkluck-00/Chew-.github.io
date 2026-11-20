@@ -37,26 +37,26 @@ interface Solicitud {
     <section class="cobros" aria-labelledby="titulo-cobros">
       <header>
         <h2 id="titulo-cobros">Cobros por mesa</h2>
-        <button type="button" (click)="cargar()" [disabled]="ocupado() || !!seleccion()">
+        <button class="btn btn-fantasma" type="button" (click)="cargar()" [disabled]="ocupado() || !!seleccion()">
           Actualizar cuentas
         </button>
       </header>
 
-      @if (error()) { <p role="alert" class="error">{{ error() }}</p> }
+      @if (error()) { <p role="alert" class="alerta-error">{{ error() }}</p> }
       @if (recibo(); as pago) {
-        <p class="recibo" role="status">
+        <p class="panel aviso recibo" role="status">
           Cobro #{{ pago.idCobro }} registrado · Mesa {{ pago.mesa }} ·
           {{ pago.total | currency:'PEN':'S/ ' }} · {{ etiquetas[pago.metodo] }}.
         </p>
       }
 
       @if (seleccion(); as cuenta) {
-        <form (ngSubmit)="registrar()">
+        <form class="panel panel-cobro" (ngSubmit)="registrar()">
           <h3>Confirmar cobro · Mesa {{ cuenta.mesa }}</h3>
           <p>Pedidos #{{ cuenta.idPedidos.join(', #') }} ·
             <strong>{{ cuenta.total | currency:'PEN':'S/ ' }}</strong></p>
-          <label for="metodo-pago">Método de pago</label>
-          <select id="metodo-pago" name="metodo" required
+          <label class="etiqueta" for="metodo-pago">Método de pago</label>
+          <select class="campo" id="metodo-pago" name="metodo" required
             [ngModel]="metodo()" (ngModelChange)="metodo.set($event)"
             [disabled]="ocupado() || !!intento()">
             <option value="">Selecciona un método</option>
@@ -64,51 +64,49 @@ interface Solicitud {
             <option value="TARJETA">Tarjeta</option>
             <option value="YAPE">Yape</option>
           </select>
-          <label class="confirmar">
+          <label class="checkbox">
             <input type="checkbox" name="confirmado" required
               [ngModel]="confirmado()" (ngModelChange)="confirmado.set($event)"
               [disabled]="ocupado() || !!intento()">
             Confirmo que recibí el pago.
           </label>
           <div class="acciones">
-            <button type="submit" [disabled]="ocupado() || !metodo() || !confirmado()">
+            <button class="btn btn-verde" type="submit" [disabled]="ocupado() || !metodo() || !confirmado()">
               {{ intento() && !ocupado() ? 'Reintentar registro' : 'Registrar cobro' }}
             </button>
-            <button type="button" (click)="cerrar()" [disabled]="ocupado()">Cancelar</button>
+            <button class="btn btn-fantasma" type="button" (click)="cerrar()" [disabled]="ocupado()">Cancelar</button>
           </div>
         </form>
       } @else {
-        <ul class="cuentas" aria-label="Cuentas pendientes">
+        <ul class="cuentas-grid" aria-label="Cuentas pendientes">
           @for (cuenta of cuentas(); track cuenta.idMesa) {
-            <li>
+            <li class="panel cuenta">
               <h3>Mesa {{ cuenta.mesa }}</h3>
               <p>Pedidos #{{ cuenta.idPedidos.join(', #') }} ·
                 <strong>{{ cuenta.total | currency:'PEN':'S/ ' }}</strong></p>
               @if (cuenta.pendientesEntrega) {
                 <p>Pendientes de entrega: {{ cuenta.pendientesEntrega }}</p>
               }
-              <button type="button" (click)="abrir(cuenta)"
+              <button class="btn" type="button" (click)="abrir(cuenta)"
                 [disabled]="ocupado() || cuenta.pendientesEntrega > 0"
                 [attr.aria-label]="'Cobrar mesa ' + cuenta.mesa">Cobrar</button>
             </li>
           } @empty {
-            <li>{{ ocupado() ? 'Consultando cuentas…' : 'No hay cuentas pendientes.' }}</li>
+            <li class="panel sin-cuentas">{{ ocupado() ? 'Consultando cuentas…' : 'No hay cuentas pendientes.' }}</li>
           }
         </ul>
       }
     </section>
   `,
   styles: [`
-    .cobros { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d6dfd8; }
-    header, .acciones, .confirmar { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; }
-    header { justify-content: space-between; }
-    button, select { font: inherit; padding: .5rem .7rem; }
-    .cuentas { padding: 0; list-style: none; display: grid; gap: 1rem; }
-    .cuentas li, form, .recibo { padding: 1rem; border: 1px solid #d6dfd8; border-radius: .65rem; }
-    form { display: grid; gap: .7rem; max-width: 26rem; }
-    h3, form p { margin: 0; }
-    .recibo { background: #ddf4e5; }
-    .error { color: #9c1d23; }
+    .cobros { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e8e6e1; }
+    header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .7rem; }
+    header h2 { margin-bottom: 0; }
+    .cuentas-grid { padding: 0; list-style: none; }
+    .sin-cuentas { grid-column: 1 / -1; }
+    form { display: grid; gap: .7rem; max-width: 32rem; }
+    form h3, form p, form .acciones, form .checkbox { margin: 0; }
+    .recibo { margin-top: 1rem; }
   `],
 })
 export class CobrosMesaComponent implements OnInit {

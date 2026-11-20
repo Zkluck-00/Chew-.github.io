@@ -1,0 +1,83 @@
+.hero {
+  align-items: center;
+}
+
+.hero .eyebrow {
+  margin-bottom: 0;
+}
+
+.carta-contenido {
+  align-items: start;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.carta-platos,
+.panel-total {
+  scroll-margin-top: 8rem;
+}
+
+.carta-platos {
+  min-width: 0;
+}
+
+.carta-productos {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  margin-top: 1.25rem;
+}
+
+.carta-productos > p {
+  grid-column: 1 / -1;
+}
+
+.producto-imagen {
+  display: block;
+}
+
+.producto-imagen img {
+  border-radius: 0;
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.producto-imagen img.foto-logo,
+.producto-imagen img[src="/chew-logo.png"] {
+  object-fit: contain;
+}
+
+.producto-contenido > p {
+  min-height: 0;
+  margin: .65rem 0;
+}
+
+.producto-contenido h3 {
+  margin-bottom: 0;
+}
+
+.producto-pie {
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.pasos button {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.panel-total .btn {
+  margin-top: 1rem;
+}
+
+@media (min-width: 850px) {
+  .con-carrito {
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+  }
+
+  .panel-total {
+    position: sticky;
+    top: 6rem;
+  }
+}

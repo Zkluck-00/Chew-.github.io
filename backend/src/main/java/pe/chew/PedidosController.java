@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +16,20 @@ import org.springframework.web.server.ResponseStatusException;
 public class PedidosController {
     private final JdbcClient jdbc;
 
-    public PedidosController(JdbcClient jdbc) {
+    private final MesasService mesas;
+    private final PersonalService personal;
+
+    public PedidosController(JdbcClient jdbc, MesasService mesas, PersonalService personal) {
         this.jdbc = jdbc;
+        this.mesas = mesas;
+        this.personal = personal;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
     public Recibo registrar(@Valid @RequestBody Solicitud solicitud) {
+        mesas.bloquear();
         long mesa = jdbc.sql("""
                 SELECT id_mesa FROM mesas
                 WHERE numero = :numero AND token_qr = :token AND activa
@@ -32,13 +39,27 @@ public class PedidosController {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.FORBIDDEN, "QR de mesa inválido"));
 
-        var anterior = buscarRecibo(mesa, solicitud.idSolicitud());
+        return registrarPedido(mesa, solicitud.idSolicitud(), solicitud.items());
+    }
+
+    @PostMapping("/manual")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    public Recibo registrarManual(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion,
+            @Valid @RequestBody SolicitudManual solicitud) {
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
+        mesas.bloquear();
+        return registrarPedido(mesas.idActiva(solicitud.mesa()), solicitud.idSolicitud(), solicitud.items());
+    }
+
+    private Recibo registrarPedido(long mesa, UUID idSolicitud, List<Item> items) {
+        var anterior = buscarRecibo(mesa, idSolicitud);
         if (anterior.isPresent())
             return anterior.get();
 
         Map<Long, Integer> cantidades = new HashMap<>();
         int unidades = 0;
-        for (Item item : solicitud.items()) {
+        for (Item item : items) {
             unidades += item.cantidad();
             if (cantidades.put(item.idPlato(), item.cantidad()) != null || unidades > 7) {
                 throw new ResponseStatusException(
@@ -70,13 +91,13 @@ public class PedidosController {
                 ON CONFLICT (id_mesa, id_solicitud) DO NOTHING
                 RETURNING id_pedido, total
                 """).param("mesa", mesa)
-                .param("solicitud", solicitud.idSolicitud()).param("total", total)
+                .param("solicitud", idSolicitud).param("total", total)
                 .query((fila, numero) -> new Recibo(
                         fila.getLong("id_pedido"), fila.getBigDecimal("total")))
                 .optional();
 
         if (nuevo.isEmpty())
-            return buscarRecibo(mesa, solicitud.idSolicitud()).orElseThrow();
+            return buscarRecibo(mesa, idSolicitud).orElseThrow();
 
         Recibo recibo = nuevo.get();
         for (Plato plato : platos) {
@@ -105,6 +126,9 @@ public class PedidosController {
             @NotNull UUID idSolicitud,
             @NotEmpty @Size(max = 7) List<@NotNull @Valid Item> items) {
     }
+
+    public record SolicitudManual(@NotNull @Positive Integer mesa, @NotNull UUID idSolicitud,
+            @NotEmpty @Size(max = 7) List<@NotNull @Valid Item> items) {}
 
     public record Item(@NotNull @Positive Long idPlato, @NotNull @Min(1) @Max(7) Integer cantidad) {
     }

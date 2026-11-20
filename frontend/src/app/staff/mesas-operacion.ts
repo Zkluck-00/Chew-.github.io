@@ -4,6 +4,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CurrencyPipe } from '@angular/common';
 import { interval, Observable } from 'rxjs';
 import { Plato } from '../core/models';
+import { OpcionesPreparacionComponent } from '../cliente/opciones-preparacion';
+
+interface LineaManual {
+  clave: string;
+  idPlato: number;
+  nombre: string;
+  cantidad: number;
+  opciones: string[];
+}
 
 interface Mesa {
   numero: number;
@@ -13,7 +22,7 @@ interface Mesa {
 
 @Component({
   selector: 'app-mesas-operacion',
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, OpcionesPreparacionComponent],
   template: `
     <section class="seccion" aria-labelledby="titulo-mesas">
       <header class="barra-seccion">
@@ -42,18 +51,26 @@ interface Mesa {
           <form class="panel" (submit)="enviar($event)">
             <h3>Pedido manual · Mesa {{ numero }}</h3>
             <label class="etiqueta" for="plato-manual">Producto o presentación</label>
-            <select id="plato-manual" class="campo ancho" #plato>
+            <select id="plato-manual" class="campo ancho" #plato
+              [value]="platoActual() ?? ''" (change)="elegirPlato(plato.value)">
               @for (producto of platos(); track producto.idPlato) {
                 <option [value]="producto.idPlato">{{ producto.nombre }} · {{ producto.precio | currency:'PEN':'S/ ' }}</option>
               }
             </select>
-            <button class="btn btn-fantasma" type="button" (click)="agregar(plato.value)"
+            @if (productoActual(); as producto) {
+              <app-opciones-preparacion [opciones]="producto.opciones ?? []" [elegidas]="preparacion()"
+                (elegidasChange)="preparacion.set($event)" />
+            }
+            <button class="btn btn-fantasma" type="button" (click)="agregar()"
               [disabled]="ocupado() || unidades() >= 7 || platos().length === 0">Agregar producto</button>
-            @for (item of seleccion(); track item.idPlato) {
+            @for (item of seleccion(); track item.clave) {
               <div class="fila-item">
-                <span>{{ item.cantidad }} × {{ item.nombre }}</span>
+                <div>
+                  <span>{{ item.cantidad }} × {{ item.nombre }}</span>
+                  @if (item.opciones.length) { <p>{{ item.opciones.join(' · ') }}</p> }
+                </div>
                 <button class="btn btn-pequeno btn-fantasma" type="button" [disabled]="ocupado()"
-                  [attr.aria-label]="'Quitar una unidad de ' + item.nombre" (click)="cambiar(item.idPlato, -1)">−</button>
+                  [attr.aria-label]="'Quitar una unidad de ' + item.nombre" (click)="quitar(item)">−</button>
               </div>
             }
             <div class="fila-total"><span>Unidades</span><strong>{{ unidades() }} de 7</strong></div>
@@ -100,7 +117,9 @@ export class MesasOperacionComponent implements OnInit {
   readonly mesas = signal<Mesa[]>([]);
   readonly mesaActual = signal<number | null>(null);
   readonly platos = signal<Plato[]>([]);
-  readonly cant = signal<Record<number, number>>({});
+  readonly platoActual = signal<number | null>(null);
+  readonly productoActual = computed(() => this.platos().find(plato => plato.idPlato === this.platoActual()));
+  readonly preparacion = signal<string[]>([]);
   readonly ocupado = signal(false);
   readonly mensaje = signal('');
   readonly error = signal('');
@@ -109,10 +128,7 @@ export class MesasOperacionComponent implements OnInit {
     const uniones = new Set(this.mesas().filter(mesa => mesa.numero !== mesa.principal).map(mesa => mesa.principal));
     return this.principales().filter(mesa => uniones.has(mesa.numero));
   });
-  readonly seleccion = computed(() => this.platos().flatMap(plato => {
-    const cantidad = this.cant()[plato.idPlato];
-    return cantidad ? [{ idPlato: plato.idPlato, nombre: plato.nombre, cantidad }] : [];
-  }));
+  readonly seleccion = signal<LineaManual[]>([]);
   readonly unidades = computed(() => this.seleccion().reduce((total, item) => total + item.cantidad, 0));
 
   ngOnInit(): void {
@@ -128,22 +144,42 @@ export class MesasOperacionComponent implements OnInit {
   iniciar(mesa: number): void {
     this.cerrar();
     this.mesaActual.set(mesa);
-    this.pedir(this.http.get<Plato[]>('/api/platos/activos'), platos => this.platos.set(platos));
+    this.pedir(this.http.get<Plato[]>('/api/platos/activos'), platos => {
+      this.platos.set(platos);
+      this.platoActual.set(platos[0]?.idPlato ?? null);
+    });
   }
 
   cerrar(): void {
     this.mesaActual.set(null);
-    this.cant.set({});
+    this.platos.set([]);
+    this.platoActual.set(null);
+    this.preparacion.set([]);
+    this.seleccion.set([]);
     this.solicitud = null;
   }
 
-  agregar(valor: string): void {
-    if (this.unidades() < 7) this.cambiar(Number(valor), 1);
+  elegirPlato(id: string): void {
+    this.platoActual.set(Number(id));
+    this.preparacion.set([]);
   }
 
-  cambiar(id: number, cambio: number): void {
-    if (!this.platos().some(plato => plato.idPlato === id)) return;
-    this.cant.update(actual => ({ ...actual, [id]: Math.max(0, (actual[id] ?? 0) + cambio) }));
+  agregar(): void {
+    const plato = this.productoActual();
+    if (!plato || this.ocupado() || this.unidades() >= 7) return;
+    const opciones = this.preparacion();
+    const clave = JSON.stringify([plato.idPlato, opciones]);
+    this.seleccion.update(lineas => lineas.some(linea => linea.clave === clave)
+      ? lineas.map(linea => linea.clave === clave ? { ...linea, cantidad: linea.cantidad + 1 } : linea)
+      : [...lineas, { clave, idPlato: plato.idPlato, nombre: plato.nombre, cantidad: 1, opciones }]);
+    this.solicitud = null;
+  }
+
+  quitar(item: LineaManual): void {
+    if (this.ocupado()) return;
+    this.seleccion.update(lineas => item.cantidad === 1
+      ? lineas.filter(linea => linea.clave !== item.clave)
+      : lineas.map(linea => linea.clave === item.clave ? { ...linea, cantidad: linea.cantidad - 1 } : linea));
     this.solicitud = null;
   }
 
@@ -152,7 +188,7 @@ export class MesasOperacionComponent implements OnInit {
     const mesa = this.mesaActual();
     if (!mesa || !this.unidades() || this.ocupado()) return;
     this.solicitud ??= crypto.randomUUID();
-    const items = this.seleccion().map(({ idPlato, cantidad }) => ({ idPlato, cantidad }));
+    const items = this.seleccion().map(({ idPlato, cantidad, opciones }) => ({ idPlato, cantidad, opciones }));
     this.pedir(this.http.post<{ idPedido: number }>('/api/pedidos/manual',
       { mesa, idSolicitud: this.solicitud, items }, this.opciones()), recibo => {
       this.mensaje.set(`Pedido #${recibo.idPedido} enviado a cocina.`);

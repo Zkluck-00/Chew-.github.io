@@ -14,7 +14,7 @@ interface Comanda {
   idPedido: number;
   mesa: number;
   estado: Estado;
-  platos: { nombre: string; cantidad: number }[];
+  platos: { nombre: string; cantidad: number; opciones?: string[] }[];
 }
 
 @Component({
@@ -59,7 +59,9 @@ interface Comanda {
               <h2>Pedido #{{ pedido.idPedido }} · Mesa {{ pedido.mesa }}</h2>
               <ul class="platos-comanda">
                 @for (plato of pedido.platos; track $index) {
-                  <li>{{ plato.cantidad }} × {{ plato.nombre }}</li>
+                  <li>{{ plato.cantidad }} × {{ plato.nombre }}
+                    @if (plato.opciones?.length) { <small class="preparacion">{{ plato.opciones?.join(' · ') }}</small> }
+                  </li>
                 }
               </ul>
               @if (rol === 'cocina' && pedido.estado === 'RECIBIDO') {
@@ -106,6 +108,7 @@ interface Comanda {
     .estado-chip[data-estado=PREPARANDO] { background: #fff2cc; }
     .estado-chip[data-estado=LISTO] { background: #ddf4e5; }
     .platos-comanda { padding-inline-start: 1rem; }
+    .preparacion { display: block; margin: .15rem 0 .4rem; color: #915023; font-weight: 700; }
     .sin-pedidos { grid-column: 1 / -1; }
   `],
 })

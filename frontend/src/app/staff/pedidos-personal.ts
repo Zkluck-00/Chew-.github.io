@@ -6,6 +6,9 @@ import { interval } from 'rxjs';
 import { CobrosMesaComponent } from './cobros-mesa';
 import { AuthService } from '../core/auth.service';
 import { MesasOperacionComponent } from './mesas-operacion';
+import { CocinaComponent } from './cocina.component';
+
+export { CocinaComponent };
 
 type Estado = 'RECIBIDO' | 'PREPARANDO' | 'LISTO';
 type Cambio = 'PREPARANDO' | 'LISTO' | 'ENTREGADO';

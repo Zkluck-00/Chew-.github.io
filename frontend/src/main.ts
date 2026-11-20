@@ -1,5 +1,6 @@
 import { provideRouter, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { PedidosPersonalComponent } from './app/staff/pedidos-personal';
+import { CocinaComponent } from './app/staff/cocina.component';
 import { CurrencyPipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -231,8 +232,8 @@ bootstrapApplication(App, {
       { path: 'admin', component: AdminComponent, canActivate: [roleGuard('ADMIN')], title: 'Administración | Chew' },
       { path: 'sin-acceso', component: SinAccesoComponent, title: 'Sin acceso | Chew' },
       { path: 'menu', redirectTo: '', pathMatch: 'full' },
-      { path: 'cocina', component: PedidosPersonalComponent, data: { rol: 'cocina' } },
+      { path: 'cocina', component: CocinaComponent, data: { rol: 'cocina' } },
       { path: 'mesero', component: PedidosPersonalComponent, data: { rol: 'mesero' } },
     ]),
   ],
-});
+}).catch(err => console.error(err));

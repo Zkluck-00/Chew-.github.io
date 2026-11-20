@@ -1,17 +1,181 @@
-<div class="pagina-titulo"><p class="eyebrow">OPERACIONES · COCINA</p><h1>Pedidos en preparacion</h1><p>Gestiona cada producto siguiendo el flujo Recibido → Preparando → Listo.</p></div>
-<div class="cuadros-resumen"><div class="panel mini"><span>PEDIDOS EN PANTALLA</span><strong>{{pedidos.length}}</strong></div><div class="panel mini"><span>PENDIENTES</span><strong>{{pendientes}}</strong></div><div class="panel mini"><span>ACTUALIZACION</span><strong>10 s</strong></div></div>
-@if (error) {<div class="alerta-error" role="alert">{{error}}</div>}
-@if (mensaje) {<div class="alerta-ok" role="status">{{mensaje}}</div>}
-<div class="acciones separadas"><span>El personal de cocina no puede cobrar ni marcar entregas.</span><button class="btn" (click)="actualizar()" [disabled]="cargando">Actualizar ↻</button></div>
-<div class="lista-pedidos">@for (p of pedidos; track p.idPedido) {
-  <article class="panel"><div class="barra-seccion"><div><p class="eyebrow">MESA {{p.mesa}}</p><h2>{{p.codigo}}</h2></div><span class="etiqueta-estado">{{p.estado}}</span></div>
-    @for (item of p.productos; track item.idDetalleProducto) {
-      <div class="fila-item item-cocina"><div><strong>{{item.nombre}} × {{item.cantidad}}</strong><p>{{item.observacion || 'Sin observaciones'}}</p><span class="estado-chip">{{item.estadoCocina}}</span></div>
-      <div class="acciones-verticales">
-        @if (item.estadoCocina==='recibido') {<button class="btn btn-pequeno" type="button" (click)="cambiar(item.idDetalleProducto,'preparando')" [disabled]="accionando!==null">Preparar</button>}
-        @if (item.estadoCocina==='preparando') {<button class="btn btn-pequeno btn-verde" type="button" (click)="cambiar(item.idDetalleProducto,'listo')" [disabled]="accionando!==null">Marcar listo</button>}
-        @if (item.estadoCocina==='listo') {<span class="texto-exito">✓ Listo para el mesero</span>}
-      </div></div>
+<div class="cocina-layout">
+  <div class="cocina-container">
+
+    <!-- Header Principal -->
+    <header class="card-header">
+      <div class="header-content">
+        <div class="marca-bloque">
+          <img src="/chew-logo.png" alt="Logo Chew" class="logo-chew">
+          <div>
+            <h1 class="titulo-pagina">Panel de Cocina</h1>
+            <p class="subtitulo-pagina">Pedidos recibidos para preparación</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="aviso-mesero">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-mini" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>Cuando marques un pedido como listo, recién será visible para el mesero.</span>
+          </div>
+
+          <div class="header-botones">
+            <button type="button" class="btn-recargar" (click)="cargar()" [disabled]="cargando()" title="Actualizar pedidos de cocina">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-icon" [class.girando]="cargando()" aria-hidden="true">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              <span>{{ cargando() ? 'Cargando...' : 'Actualizar' }}</span>
+            </button>
+            <button type="button" class="btn-salir-pill" (click)="salir()" title="Cambiar clave de cocina">
+              Salir
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Alertas de estado -->
+    @if (error()) {
+      <div class="alerta-error-box" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-alerta">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>{{ error() }}</span>
+      </div>
     }
-  </article>
-} @empty {<div class="panel centrado"><h2>No hay pedidos pendientes</h2><p>Los nuevos pedidos apareceran automaticamente.</p></div>}</div>
+
+    @if (mensaje()) {
+      <div class="alerta-exito-box" role="status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-alerta">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span>{{ mensaje() }}</span>
+      </div>
+    }
+
+    <!-- Si no está conectado con la clave -->
+    @if (!conectado()) {
+      <div class="card-login">
+        <div class="login-box">
+          <div class="icono-seguridad-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-candado">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h2>Acceso al Panel de Cocina</h2>
+          <p class="desc-login">Ingresa la clave de cocina para comenzar a despachar comandas.</p>
+          <form (submit)="entrar($event, claveInput)" class="form-login">
+            <label for="claveCocina" class="lbl-clave">Clave de Seguridad</label>
+            <input #claveInput id="claveCocina" type="password" [value]="token()" placeholder="Ingresa la clave..." required autocomplete="off" class="input-clave" [disabled]="cargando()">
+            <button type="submit" class="btn-ingresar" [disabled]="cargando()">
+              {{ cargando() ? 'Conectando...' : 'Ingresar a Cocina' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    } @else {
+
+      <!-- Barra de Filtros -->
+      <section class="card-filtros">
+        <div class="filtros-lista">
+          <button type="button" class="filtro-pill" [class.activo-todos]="filtro() === 'TODOS'" (click)="setFiltro('TODOS')">
+            Todos ({{ contadores().total }})
+          </button>
+          <button type="button" class="filtro-pill" [class.activo-pendientes]="filtro() === 'RECIBIDO'" (click)="setFiltro('RECIBIDO')">
+            Pendientes ({{ contadores().pendientes }})
+          </button>
+          <button type="button" class="filtro-pill" [class.activo-preparando]="filtro() === 'PREPARANDO'" (click)="setFiltro('PREPARANDO')">
+            En preparación ({{ contadores().preparando }})
+          </button>
+          <button type="button" class="filtro-pill" [class.activo-listos]="filtro() === 'LISTO'" (click)="setFiltro('LISTO')">
+            Listos ({{ contadores().listos }})
+          </button>
+        </div>
+      </section>
+
+      <!-- Grilla de Pedidos -->
+      <main class="grid-pedidos">
+        @for (pedido of pedidosFiltrados(); track pedido.idPedido) {
+          <article class="card-pedido">
+            <!-- Encabezado de la comanda -->
+            <div class="pedido-top">
+              <div>
+                <p class="lbl-pedido">PEDIDO</p>
+                <h2 class="codigo-pedido">PED-#{{ pedido.idPedido }}</h2>
+              </div>
+              <span class="badge-estado" [attr.data-estado]="pedido.estado">
+                {{ pedido.estado === 'RECIBIDO' ? 'Pendiente' : (pedido.estado === 'PREPARANDO' ? 'En preparación' : 'Listo') }}
+              </span>
+            </div>
+
+            <!-- Caja gris con datos de la mesa -->
+            <div class="datos-mesa-box">
+              <p><strong>Tipo:</strong> Consumo en Salón</p>
+              <p><strong>Mesa:</strong> Mesa {{ pedido.mesa }}</p>
+            </div>
+
+            <!-- Lista de platos con observaciones -->
+            <ul class="lista-items">
+              @for (plato of pedido.platos; track $index) {
+                <li class="item-plato">
+                  <div class="item-info">
+                    <div class="item-cabecera">
+                      <span class="item-titulo">{{ plato.nombre }}</span>
+                      <span class="item-cantidad-badge">× {{ plato.cantidad }}</span>
+                    </div>
+                    @if ((plato.opciones && plato.opciones.length) || (plato.observacion && plato.observacion.trim())) {
+                      <div class="item-obs-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="svg-obs">
+                          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        </svg>
+                        <span class="item-obs-texto">{{ plato.opciones && plato.opciones.length ? plato.opciones.join(', ') : plato.observacion }}</span>
+                      </div>
+                    } @else {
+                      <p class="item-obs-estandar">Preparación estándar</p>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+
+            <!-- Botones de Acción -->
+            <div class="pedido-acciones">
+              @if (pedido.estado === 'RECIBIDO') {
+                <button
+                  type="button"
+                  class="btn-accion-preparar"
+                  [disabled]="accionandoId() === pedido.idPedido"
+                  (click)="cambiarEstado(pedido, 'PREPARANDO')">
+                  {{ accionandoId() === pedido.idPedido ? 'Iniciando...' : 'En preparación' }}
+                </button>
+              } @else if (pedido.estado === 'PREPARANDO') {
+                <button
+                  type="button"
+                  class="btn-accion-listo"
+                  [disabled]="accionandoId() === pedido.idPedido"
+                  (click)="cambiarEstado(pedido, 'LISTO')">
+                  {{ accionandoId() === pedido.idPedido ? 'Actualizando...' : 'Listo para llevar a la mesa' }}
+                </button>
+              } @else if (pedido.estado === 'LISTO') {
+                <div class="box-pedido-listo">
+                  Pedido listo. Desde este momento aparece en el panel del mesero para entregarlo.
+                </div>
+              }
+            </div>
+          </article>
+        } @empty {
+          <div class="card-vacia">
+            <h2>No hay pedidos para mostrar</h2>
+            <p>Cocina solo ve pedidos pendientes, en preparación o listos.</p>
+          </div>
+        }
+      </main>
+
+    }
+
+  </div>
+</div>

@@ -31,12 +31,25 @@ export class ResumenComponent implements OnInit {
     }
     this.enviando = true;
     const body = {
-      numeroMesa: this.mesa.mesa(), tokenMesa: this.mesa.token(),
-      items: this.carrito.items().map(x => ({tipoProducto:x.tipoProducto,
-        idProducto:x.idProducto, cantidad:x.cantidad, observacion:x.observacion}))
+      mesa: this.mesa.mesa(),
+      token: this.mesa.token(),
+      idSolicitud: crypto.randomUUID(),
+      items: this.carrito.items().map(x => ({
+        idPlato: x.idProducto,
+        cantidad: x.cantidad,
+        observacion: (x.observacion || '').trim()
+      }))
     };
     this.api.crearPedido(body).pipe(takeUntilDestroyed(this.destroyed)).subscribe({
-      next: pedido => { this.resultado = pedido; this.carrito.vaciar(); this.enviando = false; },
+      next: (pedido: any) => {
+        this.resultado = {
+          ...pedido,
+          numeroMesa: this.mesa.mesa(),
+          codigo: `PED-#${pedido.idPedido}`
+        };
+        this.carrito.vaciar();
+        this.enviando = false;
+      },
       error: e => { this.error = mensajeError(e); this.enviando = false; }
     });
   }

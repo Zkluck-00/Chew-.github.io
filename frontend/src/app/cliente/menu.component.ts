@@ -32,16 +32,19 @@ export class MenuComponent implements OnInit {
   recargar(): void {
     this.cargando = true;
     this.error = '';
-    forkJoin({platos: this.api.platos(), bebidas: this.api.bebidas()})
+    this.api.platos()
       .pipe(takeUntilDestroyed(this.destroyed))
       .subscribe({
-        next: ({platos, bebidas}) => {
-          this.productos = [
-            ...platos.map(p => ({idProducto:p.idPlato, tipoProducto:'plato' as const, nombre:p.nombre,
-              descripcion:p.descripcion || '', categoria:p.categoria || 'Platos', precio:Number(p.precio), imagen:p.imagen || ''})),
-            ...bebidas.map(b => ({idProducto:b.idBebida, tipoProducto:'bebida' as const, nombre:b.nombre,
-              descripcion:b.descripcion || '', categoria:b.categoria || 'Bebidas', precio:Number(b.precio), imagen:b.imagen || ''}))
-          ];
+        next: (platos) => {
+          this.productos = platos.map(p => ({
+            idProducto: p.idPlato,
+            tipoProducto: 'plato' as const,
+            nombre: p.nombre,
+            descripcion: p.descripcion || '',
+            categoria: p.categoria || 'Platos',
+            precio: Number(p.precio),
+            imagen: p.imagen || ''
+          }));
           this.cargando = false;
         },
         error: e => { this.error = mensajeError(e); this.cargando = false; }

@@ -9,6 +9,8 @@
     { "source": "/ingresar", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/sin-acceso", "destination": "/index.html" },
-    { "source": "/menu", "destination": "/index.html" }
+    { "source": "/menu", "destination": "/index.html" },
+    { "source": "/resumen", "destination": "/index.html" },
+    { "source": "/mis-pedidos", "destination": "/index.html" }
   ]
 }

@@ -1,0 +1,28 @@
+<div class="pagina-titulo"><p class="eyebrow">PEDIDO DEL CLIENTE</p><h1>Revisa tu pedido</h1><p>Confirma las cantidades y las observaciones antes de enviarlo a cocina.</p></div>
+@if (resultado) {
+  <section class="panel centrado"><div class="icono-exito">✓</div><h2>¡Pedido registrado!</h2>
+    <p>Tu pedido <strong>{{resultado.codigo}}</strong> de la Mesa {{resultado.numeroMesa}} fue enviado a cocina.</p>
+    <h3>{{resultado.total | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</h3>
+    <div class="acciones centro"><a class="btn" routerLink="/mis-pedidos">Seguir mi pedido</a><a class="btn btn-fantasma" routerLink="/menu">Agregar mas productos</a></div>
+  </section>
+} @else {
+  @if (!mesa.valida()) { <div class="alerta-error">No se encontro el token de la mesa. Entra desde el codigo QR del restaurante.</div> }
+  @if (error) { <div class="alerta-error" role="alert">{{error}}</div> }
+  <div class="dos-columnas">
+    <section class="panel"><h2>Productos elegidos</h2>
+      @if (carrito.items().length === 0) { <p>Tu carrito esta vacio. <a routerLink="/menu">Explorar carta</a></p> }
+      @for (item of carrito.items(); track $index; let i = $index) {
+        <div class="fila-item"><div><strong>{{item.nombre}}</strong><p>{{item.observacion || 'Sin observaciones'}}</p><span class="monto">{{item.precio * item.cantidad | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</span></div>
+          <div class="pasos"><button type="button" (click)="carrito.modificar(i,-1)" aria-label="Reducir cantidad">−</button><span>{{item.cantidad}}</span><button type="button" (click)="carrito.modificar(i,1)" [disabled]="carrito.cantidad() >= 7" aria-label="Aumentar cantidad">+</button><button type="button" class="quitar" (click)="carrito.quitar(i)" aria-label="Quitar producto">×</button></div>
+        </div>
+      }
+    </section>
+    <aside class="panel panel-total"><h2>Resumen</h2><p>Mesa <strong>{{mesa.mesa() || 'Sin QR'}}</strong></p>
+      <div class="fila-total"><span>Productos</span><strong>{{carrito.cantidad()}} / 7</strong></div>
+      <div class="fila-total destacado"><span>Total a pagar</span><strong>{{carrito.total() | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong></div>
+      <p class="texto-secundario">El servidor comprobara nuevamente los precios y la validez del codigo QR.</p>
+      <button class="btn ancho" type="button" (click)="enviar()" [disabled]="enviando || !mesa.valida() || carrito.cantidad()===0">{{enviando ? 'Registrando...' : 'Confirmar pedido'}}</button>
+      <a routerLink="/menu" class="link-centro">Seguir agregando</a>
+    </aside>
+  </div>
+}

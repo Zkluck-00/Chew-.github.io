@@ -1,0 +1,30 @@
+<section class="hero">
+  <div>
+    <p class="eyebrow">LA CARTA DE CHEW</p>
+    <h1>Haz tu pedido <em>a tu gusto.</em></h1>
+    <p>Explora platos y bebidas. Los precios vienen directamente de nuestra API Spring Boot.</p>
+    <div class="acciones"><a class="btn" routerLink="/resumen">Ver carrito ({{carrito.cantidad()}})</a><a class="btn btn-fantasma" routerLink="/mis-pedidos">Mis pedidos</a></div>
+  </div>
+  <div class="hero-grafico"><span>CHEW</span><small>Tu mesa, tu pedido</small></div>
+</section>
+@if (!mesa.valida()) { <div class="aviso">Puedes consultar el menu. Para enviar un pedido debes entrar desde el enlace QR de una mesa valida.</div> }
+@if (mensaje) { <div class="aviso" role="status">{{mensaje}}</div> }
+<section class="seccion">
+  <div class="barra-seccion"><div><p class="eyebrow">NUESTROS PRODUCTOS</p><h2>Elige tu favorito</h2></div><button class="btn btn-fantasma" (click)="recargar()" type="button">Actualizar carta</button></div>
+  <div class="filtros"><input class="campo" type="search" [(ngModel)]="buscar" aria-label="Buscar platos y bebidas" placeholder="Buscar ceviche, bebida, categoria..." />
+    <select class="campo" [(ngModel)]="categoria" aria-label="Filtrar por categoria"><option value="todas">Todas las categorias</option>@for (c of categorias; track c) {<option [value]="c">{{c}}</option>}</select></div>
+  @if (cargando) { <div class="panel">Cargando carta...</div> }
+  @if (error) { <div class="alerta-error" role="alert">{{error}}</div> }
+  @if (!cargando && !error && filtrados.length === 0) { <p class="panel">No se encontraron productos.</p> }
+  <div class="productos">
+    @for (p of filtrados; track clave(p)) {
+      <article class="producto">
+        <div class="producto-imagen"><img [src]="imagenValida(p.imagen)" [alt]="p.nombre" loading="lazy" (error)="$any($event.target).src='/chew-logo.png'" /></div>
+        <div class="producto-contenido"><div class="meta"><span>{{p.tipoProducto === 'plato' ? 'PLATO' : 'BEBIDA'}}</span><span>{{p.categoria}}</span></div>
+        <h3>{{p.nombre}}</h3><p>{{p.descripcion || 'Preparado especialmente para ti.'}}</p>
+        <label class="etiqueta" [for]="clave(p)">Observaciones (opcional)</label><input class="campo" [id]="clave(p)" [name]="clave(p)" [ngModel]="observaciones[clave(p)] || ''" (ngModelChange)="observaciones[clave(p)] = $event" maxlength="500" placeholder="Ej.: sin aji, bebida helada" />
+        <div class="producto-pie"><strong>{{p.precio | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong><button class="btn" (click)="agregar(p)" type="button">Agregar +</button></div></div>
+      </article>
+    }
+  </div>
+</section>

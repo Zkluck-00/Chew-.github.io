@@ -1,0 +1,17 @@
+<div class="pagina-titulo"><p class="eyebrow">OPERACIONES · COCINA</p><h1>Pedidos en preparacion</h1><p>Gestiona cada producto siguiendo el flujo Recibido → Preparando → Listo.</p></div>
+<div class="cuadros-resumen"><div class="panel mini"><span>PEDIDOS EN PANTALLA</span><strong>{{pedidos.length}}</strong></div><div class="panel mini"><span>PENDIENTES</span><strong>{{pendientes}}</strong></div><div class="panel mini"><span>ACTUALIZACION</span><strong>10 s</strong></div></div>
+@if (error) {<div class="alerta-error" role="alert">{{error}}</div>}
+@if (mensaje) {<div class="alerta-ok" role="status">{{mensaje}}</div>}
+<div class="acciones separadas"><span>El personal de cocina no puede cobrar ni marcar entregas.</span><button class="btn" (click)="actualizar()" [disabled]="cargando">Actualizar ↻</button></div>
+<div class="lista-pedidos">@for (p of pedidos; track p.idPedido) {
+  <article class="panel"><div class="barra-seccion"><div><p class="eyebrow">MESA {{p.mesa}}</p><h2>{{p.codigo}}</h2></div><span class="etiqueta-estado">{{p.estado}}</span></div>
+    @for (item of p.productos; track item.idDetalleProducto) {
+      <div class="fila-item item-cocina"><div><strong>{{item.nombre}} × {{item.cantidad}}</strong><p>{{item.observacion || 'Sin observaciones'}}</p><span class="estado-chip">{{item.estadoCocina}}</span></div>
+      <div class="acciones-verticales">
+        @if (item.estadoCocina==='recibido') {<button class="btn btn-pequeno" type="button" (click)="cambiar(item.idDetalleProducto,'preparando')" [disabled]="accionando!==null">Preparar</button>}
+        @if (item.estadoCocina==='preparando') {<button class="btn btn-pequeno btn-verde" type="button" (click)="cambiar(item.idDetalleProducto,'listo')" [disabled]="accionando!==null">Marcar listo</button>}
+        @if (item.estadoCocina==='listo') {<span class="texto-exito">✓ Listo para el mesero</span>}
+      </div></div>
+    }
+  </article>
+} @empty {<div class="panel centrado"><h2>No hay pedidos pendientes</h2><p>Los nuevos pedidos apareceran automaticamente.</p></div>}</div>

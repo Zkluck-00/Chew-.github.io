@@ -1,0 +1,15 @@
+<div class="pagina-titulo"><p class="eyebrow">SEGUIMIENTO DEL PEDIDO</p><h1>Mi pedido actual</h1><p>Consulta el estado de cocina y el importe pendiente. Se actualiza cada 15 segundos.</p></div>
+<div class="cuadros-resumen"><div class="panel mini"><span>MI MESA</span><strong>{{mesa.mesa() || '—'}}</strong></div>
+  <div class="panel mini"><span>PEDIDOS ACTIVOS</span><strong>{{pedidos.length}}</strong></div>
+  <div class="panel mini"><span>TOTAL PENDIENTE</span><strong>{{pendiente | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong></div></div>
+@if (!mesa.valida()) {<div class="alerta-error">Necesitas ingresar desde el QR de tu mesa para consultar sus pedidos.</div>}
+@if (error) {<div class="alerta-error" role="alert">{{error}}</div>}
+<div class="acciones separadas"><a class="btn btn-fantasma" routerLink="/menu">Agregar mas platos</a><button class="btn" (click)="actualizar()" [disabled]="cargando">{{cargando ? 'Actualizando...' : 'Actualizar pedidos'}}</button></div>
+<div class="lista-pedidos">
+  @for (p of pedidos; track p.id_pedido) {
+    <article class="panel"><div class="barra-seccion"><div><p class="eyebrow">PEDIDO</p><h2>{{p.codigo}}</h2><p class="texto-secundario">{{p.fecha}} {{p.hora}}</p></div><span class="etiqueta-estado">{{p.estado_db}}</span></div>
+      @for (item of p.productos; track $index) {<div class="fila-item"><div><strong>{{item.nombre}} × {{item.cantidad}}</strong><p>{{item.observacion || 'Sin observaciones'}} · Cocina: {{item.estadoCocina}}</p></div><strong>{{item.subtotal | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong></div>}
+      <div class="fila-total destacado"><span>Total pedido</span><strong>{{p.total | currency:'PEN':'symbol':'1.2-2':'es-PE'}}</strong></div>
+    </article>
+  } @empty { @if (mesa.valida() && !cargando && !error) {<div class="panel centrado"><h2>No hay pedidos activos</h2><p>Cuando confirmes un pedido desde tu mesa aparecera aqui.</p></div>} }
+</div>

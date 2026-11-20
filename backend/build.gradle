@@ -28,8 +28,23 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-jdbc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+def sintaxisH2 = [
+		'TIMESTAMPTZ': 'TIMESTAMP WITH TIME ZONE',
+		'UUID NOT NULL UNIQUE DEFAULT gen_random_uuid()': 'UUID DEFAULT gen_random_uuid() NOT NULL UNIQUE'
+]
+
+tasks.named('processTestResources') {
+	inputs.property('sintaxisH2', sintaxisH2)
+	from('src/main/resources/db/migration') {
+		into('db/h2')
+		// Adapta la sintaxis de PostgreSQL únicamente en los recursos de pruebas.
+		filter { line -> sintaxisH2.inject(line) { sql, regla -> sql.replace(regla.key, regla.value) } }
+	}
 }

@@ -26,6 +26,7 @@ public class PedidosController {
         long mesa = jdbc.sql("""
                 SELECT id_mesa FROM mesas
                 WHERE numero = :numero AND token_qr = :token AND activa
+                FOR UPDATE
                 """).param("numero", solicitud.mesa()).param("token", solicitud.token())
                 .query(Long.class).optional()
                 .orElseThrow(() -> new ResponseStatusException(

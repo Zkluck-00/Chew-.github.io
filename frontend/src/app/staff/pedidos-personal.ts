@@ -1,8 +1,9 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { interval } from 'rxjs';
+import { CobrosMesaComponent } from './cobros-mesa';
 
 type Estado = 'RECIBIDO' | 'PREPARANDO' | 'LISTO';
 type Cambio = 'PREPARANDO' | 'LISTO' | 'ENTREGADO';
@@ -16,6 +17,7 @@ interface Comanda {
 
 @Component({
   selector: 'app-pedidos-personal',
+  imports: [CobrosMesaComponent],
   template: `
     <main>
       <header>
@@ -70,6 +72,9 @@ interface Comanda {
             </p>
           }
         </section>
+        @if (rol === 'mesero') {
+          <app-cobros-mesa [token]="token" (sesionVencida)="salir()" />
+        }
       }
     </main>
   `,
@@ -90,10 +95,11 @@ interface Comanda {
 })
 export class PedidosPersonalComponent {
   private readonly http = inject(HttpClient);
+  private readonly cobros = viewChild(CobrosMesaComponent);
   readonly rol = inject(ActivatedRoute).snapshot.data['rol'] === 'mesero' ? 'mesero' : 'cocina';
   readonly titulo = this.rol === 'mesero' ? 'Mesero' : 'Cocina';
   private readonly api = `/api/${this.rol}/pedidos`;
-  private token = '';
+  protected token = '';
 
   readonly conectado = signal(false);
   readonly ocupado = signal(false);
@@ -156,6 +162,7 @@ export class PedidosPersonalComponent {
         if (estado === 'ENTREGADO') {
           this.pedidos.update(lista => lista.filter(p => p.idPedido !== pedido.idPedido));
           this.confirmacion.set(`Pedido #${pedido.idPedido} entregado a la mesa ${pedido.mesa}.`);
+          this.cobros()?.cargar();
         } else {
           this.pedidos.update(lista => lista.map(p =>
             p.idPedido === pedido.idPedido ? { ...p, estado } : p,

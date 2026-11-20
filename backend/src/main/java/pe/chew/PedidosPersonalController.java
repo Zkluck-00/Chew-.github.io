@@ -21,13 +21,15 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api")
 public class PedidosPersonalController {
     private final JdbcClient jdbc;
+    private final CobrosMesaService cobros;
     private final String claveCocina;
     private final String claveMesero;
 
-    public PedidosPersonalController(JdbcClient jdbc,
+    public PedidosPersonalController(JdbcClient jdbc, CobrosMesaService cobros,
             @Value("${CHEW_COCINA_TOKEN:}") String claveCocina,
             @Value("${CHEW_MESERO_TOKEN:}") String claveMesero) {
         this.jdbc = jdbc;
+        this.cobros = cobros;
         this.claveCocina = claveCocina;
         this.claveMesero = claveMesero;
     }
@@ -64,6 +66,21 @@ public class PedidosPersonalController {
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
         autorizar(claveMesero, autorizacion);
         actualizar(idPedido, "LISTO", "ENTREGADO");
+    }
+
+    @GetMapping("/mesero/cuentas")
+    public ResponseEntity<List<CobrosMesaService.Cuenta>> listarCuentas(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
+        autorizar(claveMesero, autorizacion);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(cobros.listar());
+    }
+
+    @PostMapping("/mesero/cuentas/{idMesa}/cobros")
+    public ResponseEntity<CobrosMesaService.Recibo> cobrar(@PathVariable long idMesa,
+            @Valid @RequestBody CobrosMesaService.Solicitud solicitud,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion) {
+        autorizar(claveMesero, autorizacion);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(cobros.cobrar(idMesa, solicitud));
     }
 
     private ResponseEntity<List<Comanda>> listar(List<String> estados) {

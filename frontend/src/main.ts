@@ -1,5 +1,5 @@
 import { provideRouter, RouterOutlet } from '@angular/router';
-import { PedidosPersonalComponent } from './pedidos-personal';
+import { PedidosPersonalComponent } from './app/staff/pedidos-personal';
 import { CurrencyPipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
@@ -145,8 +145,12 @@ class Carta {
 class App {}
 
 bootstrapApplication(App, {
-provideRouter([
-  { path: '', pathMatch: 'full', component: Carta },
-  { path: 'cocina', component: PedidosPersonalComponent, data: { rol: 'cocina' } },
-  { path: 'mesero', component: PedidosPersonalComponent, data: { rol: 'mesero' } },
-]),
+  providers: [
+    provideHttpClient(),
+    provideRouter([
+      { path: '', pathMatch: 'full', component: Carta },
+      { path: 'cocina', component: PedidosPersonalComponent, data: { rol: 'cocina' } },
+      { path: 'mesero', component: PedidosPersonalComponent, data: { rol: 'mesero' } },
+    ]),
+  ],
+});

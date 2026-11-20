@@ -1,14 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { mensajeError } from '../core/error.util';
+import { finalize } from 'rxjs';
 
 @Component({standalone:true, selector:'app-login', imports:[ReactiveFormsModule,RouterLink], templateUrl:'./login.component.html'})
 export class LoginComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required, Validators.minLength(3)]],
     password: ['', Validators.required]
@@ -21,9 +23,9 @@ export class LoginComponent {
     this.enviando = true;
     this.error = '';
     const {username, password} = this.form.getRawValue();
-    this.auth.login(username.trim(), password).subscribe({
+    this.auth.login(username.trim(), password).pipe(finalize(() => this.changeDetector.markForCheck())).subscribe({
       next: res => { this.enviando = false; void this.router.navigateByUrl(this.auth.inicioParaRol(res.rol)); },
-      error: e => { this.enviando = false; this.error = mensajeError(e); }
+      error: e => { this.enviando = false; this.error = e.status === 401 ? 'Usuario o contraseña inválidos.' : mensajeError(e); }
     });
   }
 }

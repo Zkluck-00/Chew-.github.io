@@ -1,0 +1,130 @@
+<main class="contenedor principal">
+  <section class="hero" aria-labelledby="titulo-carta">
+    <div>
+      @if (tieneQr) { <p class="eyebrow">Mesa {{ mesa }}</p> }
+      <h1 id="titulo-carta">La carta de <em>Chew</em></h1>
+      @if (!tieneQr) { <p>Escanea el QR de tu mesa para enviar tu pedido a cocina.</p> }
+      <div class="acciones">
+        <a href="#platos" class="btn">Ver platos</a>
+        @if (tieneQr) { <a href="#carrito" class="btn btn-fantasma">Mi carrito ({{ unidades() }})</a> }
+      </div>
+    </div>
+    <div class="hero-grafico" aria-hidden="true"><span>CHEW</span></div>
+  </section>
+
+  <div class="seccion carta-contenido" [class.con-carrito]="tieneQr">
+    <section aria-labelledby="titulo-platos" id="platos" class="carta-platos">
+      <div class="barra-seccion">
+        <h2 id="titulo-platos">Platos disponibles</h2>
+      </div>
+
+      @if (errorCarta()) {
+        <div class="alerta-error" role="alert">
+          <p>No se pudo cargar la carta.</p>
+          <button class="btn btn-fantasma" type="button" (click)="cargarCarta()">Reintentar</button>
+        </div>
+      } @else if (platos(); as carta) {
+        @if (carta.length) {
+          <div class="filtros">
+            <div>
+              <label class="etiqueta" for="buscar-plato">Buscar plato o bebida</label>
+              <input id="buscar-plato" class="campo ancho" type="search" #buscar
+                [value]="busqueda()" (input)="busqueda.set(buscar.value)" />
+            </div>
+            <div>
+              <label class="etiqueta" for="categoria">Categoría</label>
+              <select id="categoria" class="campo ancho" #grupo
+                [value]="categoria()" (change)="categoria.set(grupo.value)">
+                <option value="">Todas las categorías</option>
+                @for (nombre of categorias(); track nombre) { <option [value]="nombre">{{ nombre }}</option> }
+              </select>
+            </div>
+          </div>
+        }
+        <div class="productos carta-productos">
+          @for (producto of visibles(); track producto.clave) {
+            @let elegido = elegidas()[producto.clave] ?? producto.variantes[0].idPlato;
+            <article class="producto">
+              <div class="producto-imagen">
+                <img [src]="producto.imagen" alt="" loading="lazy" referrerpolicy="no-referrer" #foto
+                  [class.foto-logo]="producto.imagen === '/chew-logo.png'" (error)="fotoAlternativa(foto)" />
+              </div>
+              <div class="producto-contenido">
+                <span class="meta">{{ producto.categoria }}</span>
+                <h3>{{ producto.nombre }}</h3>
+                @if (producto.descripcion) { <p>{{ producto.descripcion }}</p> }
+                @if (producto.variantes.length > 1) {
+                  <label class="etiqueta" [for]="'variante-' + producto.clave">Presentación</label>
+                  <select class="campo" [id]="'variante-' + producto.clave" #variante
+                    [value]="elegido" (change)="elegir(producto, variante.value)">
+                    @for (plato of producto.variantes; track plato.idPlato) {
+                      <option [value]="plato.idPlato">{{ plato.variante || plato.nombre }} · {{ plato.precio | currency:'PEN':'S/ ' }}</option>
+                    }
+                  </select>
+                }
+                @for (plato of producto.variantes; track plato.idPlato) {
+                  @if (plato.idPlato === elegido) {
+                    @let opciones = preparaciones()[plato.idPlato] ?? [];
+                    <app-opciones-preparacion [opciones]="plato.opciones ?? []" [elegidas]="opciones"
+                      (elegidasChange)="elegirPreparacion(plato.idPlato, $event)" />
+                    <div class="producto-pie">
+                      <strong>{{ plato.precio | currency:'PEN':'S/ ' }}</strong>
+                      @if (tieneQr) {
+                        <div class="pasos" [attr.aria-label]="'Cantidad de ' + plato.nombre" role="group">
+                          <button type="button" [attr.aria-label]="'Quitar ' + plato.nombre"
+                            [disabled]="enviando() || !cantidad(plato.idPlato, opciones)"
+                            (click)="cambiar(plato, opciones, -1)">−</button>
+                          <span>{{ cantidad(plato.idPlato, opciones) }}</span>
+                          <button type="button" [attr.aria-label]="'Agregar ' + plato.nombre"
+                            [disabled]="enviando() || unidades() >= 7"
+                            (click)="cambiar(plato, opciones, 1)">+</button>
+                        </div>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+            </article>
+          } @empty {
+            <p class="panel">{{ carta.length ? 'No se encontraron productos.' : 'Por ahora no hay platos disponibles.' }}</p>
+          }
+        </div>
+      } @else {
+        <p class="panel" role="status">Cargando platos…</p>
+      }
+    </section>
+
+    @if (tieneQr) {
+      <aside id="carrito" class="panel panel-total" aria-labelledby="titulo-carrito">
+        <h2 id="titulo-carrito">Mi carrito</h2>
+        @for (plato of seleccion(); track plato.clave) {
+          <div class="fila-item">
+            <div>
+              <strong>{{ plato.cantidad }} × {{ plato.nombre }}</strong>
+              @if (plato.opciones.length) { <p>{{ plato.opciones.join(' · ') }}</p> }
+              <span class="monto">{{ plato.precio * plato.cantidad | currency:'PEN':'S/ ' }}</span>
+            </div>
+            <button class="btn btn-pequeno btn-fantasma" type="button" [disabled]="enviando()"
+              [attr.aria-label]="'Quitar una unidad de ' + plato.nombre + ' del carrito'"
+              (click)="cambiar(plato, plato.opciones, -1)">−</button>
+          </div>
+        } @empty {
+          @if (!recibo()) { <p>Tu carrito está vacío.</p> }
+        }
+        @if (errorPedido()) { <p class="alerta-error" role="alert">{{ errorPedido() }}</p> }
+        @if (recibo(); as pedido) {
+          <p class="aviso" role="status">Pedido #{{ pedido.idPedido }} registrado.
+            Total {{ pedido.total | currency:'PEN':'S/ ' }}.</p>
+        } @else {
+          <div class="fila-total"><span>Unidades</span><strong>{{ unidades() }} de 7</strong></div>
+          <div class="fila-total destacado">
+            <span>Total estimado</span><strong>{{ totalEstimado() | currency:'PEN':'S/ ' }}</strong>
+          </div>
+          <button class="btn ancho" type="button" [disabled]="enviando() || !unidades()" (click)="enviar()">
+            {{ enviando() ? 'Enviando…' : 'Enviar pedido a cocina' }}
+          </button>
+        }
+      </aside>
+    }
+  </div>
+</main>

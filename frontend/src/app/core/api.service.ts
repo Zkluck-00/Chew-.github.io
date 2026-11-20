@@ -7,7 +7,7 @@ const BASE = '/api';
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private http = inject(HttpClient);
-  platos(activos = true): Observable<Plato[]> { return this.http.get<Plato[]>(`${BASE}/platos${activos ? '/activos' : ''}`); }
+  platos(activos = true): Observable<Plato[]> { return this.http.get<Plato[]>(activos ? `${BASE}/platos/activos` : `${BASE}/admin/platos`); }
   bebidas(activas = true): Observable<Bebida[]> { return this.http.get<Bebida[]>(`${BASE}/bebidas${activas ? '/activas' : ''}`); }
   guardarProducto(tipo: 'platos' | 'bebidas', body: unknown, id?: number): Observable<unknown> {
     const url = `${BASE}/${tipo}${id ? `/${id}` : ''}`;
@@ -24,6 +24,8 @@ export class ApiService {
   login(username: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${BASE}/auth/login`, { username, password });
   }
+  cerrarSesion(): Observable<void> { return this.http.delete<void>(`${BASE}/auth/sesion`); }
+  codigosMesa(): Observable<{ numero: number; token: string }[]> { return this.http.get<{ numero: number; token: string }[]>(`${BASE}/admin/mesas`); }
   usuarios(): Observable<Usuario[]> { return this.http.get<Usuario[]>(`${BASE}/admin/usuarios`); }
   crearUsuario(body: unknown): Observable<Usuario> { return this.http.post<Usuario>(`${BASE}/admin/usuarios`, body); }
   modificarUsuario(id: number, body: unknown): Observable<Usuario> {

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +16,20 @@ import org.springframework.web.server.ResponseStatusException;
 public class PedidosController {
     private final JdbcClient jdbc;
 
-    public PedidosController(JdbcClient jdbc) {
+    private final MesasService mesas;
+    private final PersonalService personal;
+
+    public PedidosController(JdbcClient jdbc, MesasService mesas, PersonalService personal) {
         this.jdbc = jdbc;
+        this.mesas = mesas;
+        this.personal = personal;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
     public Recibo registrar(@Valid @RequestBody Solicitud solicitud) {
+        mesas.bloquear();
         long mesa = jdbc.sql("""
                 SELECT id_mesa FROM mesas
                 WHERE numero = :numero AND token_qr = :token AND activa
@@ -32,36 +39,47 @@ public class PedidosController {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.FORBIDDEN, "QR de mesa inválido"));
 
-        var anterior = buscarRecibo(mesa, solicitud.idSolicitud());
+        return registrarPedido(mesa, solicitud.idSolicitud(), solicitud.items());
+    }
+
+    @PostMapping("/manual")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    public Recibo registrarManual(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String autorizacion,
+            @Valid @RequestBody SolicitudManual solicitud) {
+        personal.exigirOperativo(PersonalService.Rol.MESERO, autorizacion);
+        mesas.bloquear();
+        return registrarPedido(mesas.idActiva(solicitud.mesa()), solicitud.idSolicitud(), solicitud.items());
+    }
+
+    private Recibo registrarPedido(long mesa, UUID idSolicitud, List<Item> items) {
+        var anterior = buscarRecibo(mesa, idSolicitud);
         if (anterior.isPresent())
             return anterior.get();
 
-        Map<Long, Integer> cantidades = new HashMap<>();
-        int unidades = 0;
-        for (Item item : solicitud.items()) {
-            unidades += item.cantidad();
-            if (cantidades.put(item.idPlato(), item.cantidad()) != null || unidades > 7) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Pedido inválido o superior a siete unidades");
-            }
-        }
+        if (items.stream().mapToInt(Item::cantidad).sum() > 7)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Máximo siete unidades por pedido");
 
-        var platos = jdbc.sql("""
-                SELECT id_plato, nombre, precio FROM platos
+        var ids = items.stream().map(Item::idPlato).distinct().toList();
+        var platos = new HashMap<Long, Plato>();
+        jdbc.sql("""
+                SELECT id_plato, nombre, precio, opciones_preparacion FROM platos
                 WHERE activo AND id_plato IN (:ids)
-                """).param("ids", cantidades.keySet())
-                .query((fila, numero) -> new Plato(fila.getLong("id_plato"),
-                        fila.getString("nombre"), fila.getBigDecimal("precio")))
-                .list();
+                """).param("ids", ids).query(Plato.class).list()
+                .forEach(plato -> platos.put(plato.idPlato(), plato));
+        if (platos.size() != ids.size())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hay platos que ya no están disponibles");
 
-        if (platos.size() != cantidades.size()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Hay platos que ya no están disponibles");
+        var detalles = new LinkedHashMap<Detalle, Integer>();
+        for (Item item : items) {
+            Plato plato = platos.get(item.idPlato());
+            String opciones = OpcionesPreparacion.validar(item.opciones(), plato.opcionesPreparacion());
+            var detalle = new Detalle(plato, opciones);
+            if (detalles.put(detalle, item.cantidad()) != null)
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El pedido repite la misma presentación y opciones");
         }
-
-        BigDecimal total = platos.stream()
-                .map(plato -> plato.precio().multiply(
-                        BigDecimal.valueOf(cantidades.get(plato.id()))))
+        BigDecimal total = detalles.entrySet().stream()
+                .map(detalle -> detalle.getKey().plato().precio().multiply(BigDecimal.valueOf(detalle.getValue())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         var nuevo = jdbc.sql("""
@@ -70,29 +88,25 @@ public class PedidosController {
                 ON CONFLICT (id_mesa, id_solicitud) DO NOTHING
                 RETURNING id_pedido, total
                 """).param("mesa", mesa)
-                .param("solicitud", solicitud.idSolicitud()).param("total", total)
+                .param("solicitud", idSolicitud).param("total", total)
                 .query((fila, numero) -> new Recibo(
                         fila.getLong("id_pedido"), fila.getBigDecimal("total")))
                 .optional();
 
         if (nuevo.isEmpty())
-            return buscarRecibo(mesa, solicitud.idSolicitud()).orElseThrow();
+            return buscarRecibo(mesa, idSolicitud).orElseThrow();
 
         Recibo recibo = nuevo.get();
-        Map<Long, String> observaciones = new HashMap<>();
-        for (Item item : solicitud.items()) {
-            observaciones.put(item.idPlato(), item.observacion() != null ? item.observacion().trim() : "");
-        }
-
-        for (Plato plato : platos) {
+        for (var linea : detalles.entrySet()) {
+            var detalle = linea.getKey();
+            Plato plato = detalle.plato();
             jdbc.sql("""
                     INSERT INTO detalles_pedido
-                        (id_pedido, id_plato, nombre_plato, cantidad, precio_unitario, observacion)
-                    VALUES (:pedido, :plato, :nombre, :cantidad, :precio, :observacion)
-                    """).param("pedido", recibo.idPedido()).param("plato", plato.id())
-                    .param("nombre", plato.nombre()).param("cantidad", cantidades.get(plato.id()))
-                    .param("precio", plato.precio())
-                    .param("observacion", observaciones.getOrDefault(plato.id(), "")).update();
+                        (id_pedido, id_plato, nombre_plato, cantidad, precio_unitario, opciones_preparacion)
+                    VALUES (:pedido, :plato, :nombre, :cantidad, :precio, :opciones)
+                    """).param("pedido", recibo.idPedido()).param("plato", plato.idPlato())
+                    .param("nombre", plato.nombre()).param("cantidad", linea.getValue())
+                    .param("precio", plato.precio()).param("opciones", detalle.opciones()).update();
         }
         return recibo;
     }
@@ -112,16 +126,15 @@ public class PedidosController {
             @NotEmpty @Size(max = 7) List<@NotNull @Valid Item> items) {
     }
 
+    public record SolicitudManual(@NotNull @Positive Integer mesa, @NotNull UUID idSolicitud,
+            @NotEmpty @Size(max = 7) List<@NotNull @Valid Item> items) {}
+
     public record Item(@NotNull @Positive Long idPlato, @NotNull @Min(1) @Max(7) Integer cantidad,
-            String observacion) {
-        public Item(Long idPlato, Integer cantidad) {
-            this(idPlato, cantidad, "");
-        }
-    }
+            @Size(max = 2) List<@NotBlank @Size(max = 70) String> opciones) {}
 
     public record Recibo(long idPedido, BigDecimal total) {
     }
 
-    private record Plato(long id, String nombre, BigDecimal precio) {
-    }
+    private record Plato(long idPlato, String nombre, BigDecimal precio, String opcionesPreparacion) {}
+    private record Detalle(Plato plato, String opciones) {}
 }

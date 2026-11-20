@@ -24,6 +24,7 @@ export class AuthService {
     }));
   }
   logout(): void {
+    if (this.token()) this.api.cerrarSesion().subscribe({error: () => {}});
     this.sesion.set(null);
     sessionStorage.removeItem(STORAGE_KEY);
   }

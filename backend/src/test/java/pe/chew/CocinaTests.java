@@ -49,7 +49,7 @@ class CocinaTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.idPedido == " + idPedido + ")].mesa").value(hasItem(901)))
                 .andExpect(jsonPath("$[?(@.idPedido == " + idPedido + ")].platos[0].nombre").value(hasItem("Lomo Saltado")))
-                .andExpect(jsonPath("$[?(@.idPedido == " + idPedido + ")].platos[0].observacion").value(hasItem("Término 3/4")));
+                .andExpect(jsonPath("$[?(@.idPedido == " + idPedido + ")].platos[0].opciones").isArray());
     }
 
     @Test
@@ -106,7 +106,7 @@ class CocinaTests {
 
     private void detalle(long pedido, long plato, String nombre, int cantidad, double precio, String observacion) {
         jdbc.sql("""
-                INSERT INTO detalles_pedido (id_pedido, id_plato, nombre_plato, cantidad, precio_unitario, observacion)
+                INSERT INTO detalles_pedido (id_pedido, id_plato, nombre_plato, cantidad, precio_unitario, opciones_preparacion)
                 VALUES (:pedido, :plato, :nombre, :cantidad, :precio, :observacion)
                 """).param("pedido", pedido).param("plato", plato).param("nombre", nombre)
                 .param("cantidad", cantidad).param("precio", precio).param("observacion", observacion).update();

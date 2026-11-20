@@ -4,6 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { interval } from 'rxjs';
 import { CobrosMesaComponent } from './cobros-mesa';
+import { AuthService } from '../core/auth.service';
+import { MesasOperacionComponent } from './mesas-operacion';
 import { CocinaComponent } from './cocina.component';
 
 export { CocinaComponent };
@@ -15,89 +17,107 @@ interface Comanda {
   idPedido: number;
   mesa: number;
   estado: Estado;
-  platos: { nombre: string; cantidad: number }[];
+  platos: { nombre: string; cantidad: number; opciones?: string[] }[];
 }
 
 @Component({
   selector: 'app-pedidos-personal',
-  imports: [CobrosMesaComponent],
+  imports: [CobrosMesaComponent, MesasOperacionComponent],
   template: `
-    <main>
-      <header>
-        <h1>{{ titulo }}</h1>
-        @if (conectado()) {
-          <div class="acciones">
-            <button type="button" [disabled]="ocupado()" (click)="cargar()">Actualizar</button>
-            <button type="button" [disabled]="ocupado()" (click)="salir()">Salir</button>
-          </div>
-        }
-      </header>
-
-      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-      @if (confirmacion()) { <p role="status">{{ confirmacion() }}</p> }
-
+    <main class="contenedor principal">
       @if (!conectado()) {
-        <form (submit)="entrar($event, clave)">
-          <label for="clave">Clave de {{ rol }}</label>
-          <input #clave id="clave" type="password" required autocomplete="off">
-          <button type="submit" [disabled]="ocupado()">Entrar</button>
-        </form>
+        <div class="login-layout">
+          <section class="login-ilustracion" aria-labelledby="titulo-acceso">
+            <p class="eyebrow">Chew</p>
+            <h1 id="titulo-acceso">{{ titulo }}</h1>
+          </section>
+          <section class="panel login-panel" aria-labelledby="titulo-formulario">
+            <h2 id="titulo-formulario">Acceso del personal</h2>
+            <form (submit)="entrar($event, clave)">
+              <label class="etiqueta" for="clave">Clave de {{ rol }}</label>
+              <input class="campo ancho" #clave id="clave" type="password" required autocomplete="off">
+              @if (error()) { <p class="alerta-error" role="alert">{{ error() }}</p> }
+              <button class="btn ancho" type="submit" [disabled]="ocupado()">
+                {{ ocupado() ? 'Verificando…' : 'Entrar' }}
+              </button>
+            </form>
+          </section>
+        </div>
       } @else {
-        <section class="pedidos" [attr.aria-label]="'Pedidos de ' + rol">
+        <header class="pagina-titulo cabecera-panel">
+          <h1>{{ titulo }}</h1>
+          <div class="acciones">
+            <button class="btn btn-fantasma" type="button" [disabled]="ocupado()" (click)="cargar()">Actualizar</button>
+            <button class="btn btn-fantasma" type="button" [disabled]="ocupado()" (click)="salir()">Salir</button>
+          </div>
+        </header>
+
+        @if (error()) { <p class="alerta-error" role="alert">{{ error() }}</p> }
+        @if (confirmacion()) { <p class="aviso" role="status">{{ confirmacion() }}</p> }
+
+        <section [attr.aria-label]="'Pedidos de ' + rol" class="lista-pedidos">
           @for (pedido of pedidos(); track pedido.idPedido) {
-            <article>
-              <p class="estado" [attr.data-estado]="pedido.estado">{{ etiquetas[pedido.estado] }}</p>
+            <article class="panel comanda">
+              <p class="estado-chip" [attr.data-estado]="pedido.estado">{{ etiquetas[pedido.estado] }}</p>
               <h2>Pedido #{{ pedido.idPedido }} · Mesa {{ pedido.mesa }}</h2>
-              <ul>
+              <ul class="platos-comanda">
                 @for (plato of pedido.platos; track $index) {
-                  <li>{{ plato.cantidad }} × {{ plato.nombre }}</li>
+                  <li>{{ plato.cantidad }} × {{ plato.nombre }}
+                    @if (plato.opciones?.length) { <small class="preparacion">{{ plato.opciones?.join(' · ') }}</small> }
+                  </li>
                 }
               </ul>
               @if (rol === 'cocina' && pedido.estado === 'RECIBIDO') {
-                <button type="button" [disabled]="ocupado()" (click)="cambiar(pedido, 'PREPARANDO')">
+                <button class="btn" type="button" [disabled]="ocupado()" (click)="cambiar(pedido, 'PREPARANDO')">
                   Empezar preparación
                 </button>
               }
               @if (rol === 'cocina' && pedido.estado === 'PREPARANDO') {
-                <button type="button" [disabled]="ocupado()" (click)="cambiar(pedido, 'LISTO')">
+                <button class="btn btn-verde" type="button" [disabled]="ocupado()" (click)="cambiar(pedido, 'LISTO')">
                   Marcar listo
                 </button>
               }
               @if (rol === 'mesero' && pedido.estado === 'LISTO') {
-                <button type="button" [disabled]="ocupado()" (click)="cambiar(pedido, 'ENTREGADO')">
+                <button class="btn btn-verde" type="button" [disabled]="ocupado()" (click)="cambiar(pedido, 'ENTREGADO')">
                   Marcar entregado
                 </button>
               }
             </article>
           } @empty {
-            <p role="status">
+            <p class="panel sin-pedidos" role="status">
               {{ rol === 'mesero' ? 'No hay pedidos listos para entregar.' : 'Aún no hay pedidos en cocina.' }}
             </p>
           }
         </section>
+
         @if (rol === 'mesero') {
           <app-cobros-mesa [token]="token" (sesionVencida)="salir()" />
+          <app-mesas-operacion [token]="token" (sesionVencida)="salir()" (actualizacion)="actualizarCuentas()" />
         }
       }
     </main>
   `,
   styles: [`
-    main { max-width: 62rem; margin: 2rem auto; padding: 0 1.25rem; font-family: system-ui; }
-    header, .acciones { display: flex; justify-content: space-between; gap: .7rem; align-items: center; }
-    form { display: grid; gap: .7rem; max-width: 20rem; }
-    input, button { font: inherit; padding: .5rem .7rem; }
-    button { cursor: pointer; }
-    .pedidos { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
-    article { padding: 1rem; border: 1px solid #d6dfd8; border-radius: .65rem; }
-    h2 { font-size: 1.15rem; }
-    .estado { display: inline-block; margin: 0; padding: .2rem .55rem; border-radius: .4rem; background: #edf0ff; }
-    .estado[data-estado=PREPARANDO] { background: #fff2cc; }
-    .estado[data-estado=LISTO] { background: #ddf4e5; }
-    .error { color: #9c1d23; }
+    .login-ilustracion {
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .login-panel { align-self: center; }
+    .login-panel .alerta-error { margin-top: 1rem; }
+    .cabecera-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+    .cabecera-panel .acciones { margin-top: 0; }
+    .comanda h2 { font-size: 1.2rem; }
+    .estado-chip[data-estado=PREPARANDO] { background: #fff2cc; }
+    .estado-chip[data-estado=LISTO] { background: #ddf4e5; }
+    .platos-comanda { padding-inline-start: 1rem; }
+    .preparacion { display: block; margin: .15rem 0 .4rem; color: #915023; font-weight: 700; }
+    .sin-pedidos { grid-column: 1 / -1; }
   `],
 })
 export class PedidosPersonalComponent {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
   private readonly cobros = viewChild(CobrosMesaComponent);
   readonly rol = inject(ActivatedRoute).snapshot.data['rol'] === 'mesero' ? 'mesero' : 'cocina';
   readonly titulo = this.rol === 'mesero' ? 'Mesero' : 'Cocina';
@@ -114,6 +134,10 @@ export class PedidosPersonalComponent {
   };
 
   constructor() {
+    if (this.auth.rol() === 'ADMIN' || this.auth.rol()?.toLowerCase() === this.rol) {
+      this.token = this.auth.token() ?? '';
+      this.cargar();
+    }
     interval(10000).pipe(takeUntilDestroyed()).subscribe(() => {
       if (this.conectado()) this.cargar();
     });
@@ -125,6 +149,10 @@ export class PedidosPersonalComponent {
     this.token = campo.value.trim();
     campo.value = '';
     this.cargar();
+  }
+
+  actualizarCuentas(): void {
+    this.cobros()?.cargar();
   }
 
   salir(): void {
@@ -186,6 +214,9 @@ export class PedidosPersonalComponent {
     if (falla.status === 401) {
       this.salir();
       this.error.set(`La clave de ${this.rol} no es válida.`);
+    } else if (falla.status === 403) {
+      this.salir();
+      this.error.set('Tu cuenta no tiene acceso a esta pantalla.');
     } else if (falla.status === 503) {
       this.error.set(`Revisa que Spring Boot tenga la clave de ${this.rol} configurada.`);
     } else if (falla.status === 409) {

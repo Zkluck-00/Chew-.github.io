@@ -11,6 +11,7 @@ export interface PlatoComanda {
   nombre: string;
   cantidad: number;
   observacion?: string;
+  opciones?: string[];
 }
 
 export interface Comanda {
